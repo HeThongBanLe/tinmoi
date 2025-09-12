@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tên Trang Web</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .header {
+            height: 40px;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #user-info {
+            font-size: 14px;
+            margin-right: 20px;
+            display: none;
+        }
+
+        .menu-toggle {
+            font-size: 24px;
+            cursor: pointer;
+            margin-left: 20px;
+        }
+
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1001;
+            top: 40px;
+            left: 0;
+            background-color: #34495e;
+            overflow-x: hidden;
+            transition: width 0.5s;
+            padding-top: 20px;
+        }
+
+        .main-content {
+            margin-top: 40px;
+            padding: 20px;
+            transition: margin-left .5s;
+        }
+
+        .main-content.pushed {
+            margin-left: 250px;
+        }
+        
+        .sidebar.active {
+            width: 250px;
+        }
+        
+        .main-content.pushed.active {
+             margin-left: 250px;
+        }
+
+        .sidebar a {
+            padding: 15px 15px 15px 32px;
+            text-decoration: none;
+            font-size: 16px;
+            color: white;
+            display: block;
+            transition: 0.3s;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .sidebar a:hover {
+            background-color: #575757;
+        }
+        
+        .sidebar a:last-child {
+            border-bottom: none;
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 5px;
+            right: 15px;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+
+        .modal-content button {
+            background-color: #2c3e50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 4px;
+        }
+
+        .modal-content button:hover {
+            opacity: 0.8;
+        }
+
+        #auth-status {
+            margin-top: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* News page styling */
+        .news-page {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .news-page input[type="text"], .news-page textarea {
+            width: 100%;
+            max-width: 800px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+
+        .news-page textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .news-page button {
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .add-chapter-btn, .remove-chapter-btn {
+            background-color: #5a7791;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .add-chapter-btn {
+            background-color: #27ae60;
+        }
+
+        .chapter-container {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        /* News content styling */
+        #newsContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+
+        .news-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .news-card h3 {
+            margin-top: 0;
+            font-size: 22px; /* Tăng kích thước phông chữ */
+            color: #007bff; /* Đổi màu chữ sang xanh dương */
+        }
+
+        .news-card p {
+            font-size: 14px;
+            color: #666;
+        }
+        .news-card .author {
+            font-style: italic;
+            color: #888;
+            font-size: 12px;
+            margin-top: 10px;
+            text-align: right;
+        }
+        .news-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        /* Full Article Page Styling */
+        #fullArticlePage {
+            display: none;
+            padding: 20px;
+            max-width: 800px;
+            margin: 60px auto 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #fullArticlePage h2 {
+            margin-top: 0;
+            font-size: 22px;
+            color: #007bff;
+        }
+        
+        #fullArticlePage .chapter-title {
+            font-size: 18px; /* Tăng kích thước phông chữ */
+            color: #00aaff; /* Đổi màu chữ sang xanh lam */
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        #fullArticlePage .chapter-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        #fullArticlePage .chapter-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        #fullArticlePage .main-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        #backToMainBtn {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            z-index: 1002;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Responsive cho thiết bị di động */
+        @media (max-width: 600px) {
+            .sidebar {
+                width: 0;
+                transition: width 0.5s;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .sidebar.active {
+                width: 200px;
+            }
+
+            .main-content.pushed {
+                margin-left: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="menu-toggle" id="menuToggle">&#9776;</span>
+        <h1>Tên Trang Web</h1>
+        <div id="user-info"></div>
+    </div>
+
+    <div id="mySidebar" class="sidebar">
+        <a href="javascript:void(0)" id="loginBtn">Đăng nhập</a>
+        <a href="javascript:void(0)" id="newsBtn" style="display:none;">Tin mới</a>
+        <a href="javascript:void(0)" id="changePasswordBtn" style="display:none;">Đổi mật khẩu</a>
+        <a href="javascript:void(0)" id="createAccountBtn" style="display:none;">Tạo tài khoản</a>
+        <a href="javascript:void(0)" id="logoutBtn" style="display:none;">Đăng xuất</a>
+    </div>
+
+    <div id="main" class="main-content">
+        <h2>Nội dung chính của trang web</h2>
+        <div id="newsContainer"></div>
+    </div>
+    
+    <div id="newsPage" class="news-page">
+        <h2>Viết tin mới</h2>
+        <input type="text" id="newsTitle" placeholder="Tiêu đề bài viết">
+        <input type="text" id="newsImageUrl" placeholder="Đường dẫn ảnh mô tả">
+        <input type="text" id="newsDescription" placeholder="Mô tả ngắn">
+        <div id="chaptersContainer"></div>
+        <button class="add-chapter-btn" id="addChapterBtn">Thêm chương</button>
+        <button id="submitNewsBtn">Đăng bài</button>
+    </div>
+
+    <!-- The Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Đăng nhập</h2>
+            <input type="email" id="emailInput" placeholder="Email" required>
+            <input type="password" id="passwordInput" placeholder="Mật khẩu" required>
+            <button id="loginSubmitBtn">Đăng nhập</button>
+            <div id="auth-status"></div>
+        </div>
+    </div>
+    
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Đổi mật khẩu</h2>
+            <input type="password" id="newPasswordInput" placeholder="Mật khẩu mới" required>
+            <button id="changePasswordSubmitBtn">Xác nhận</button>
+            <div id="password-status"></div>
+        </div>
+    </div>
+    
+    <!-- Create Account Modal -->
+    <div id="createAccountModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Tạo tài khoản mới</h2>
+            <input type="email" id="newEmailInput" placeholder="Email" required>
+            <input type="password" id="newPasswordInput2" placeholder="Mật khẩu" required>
+            <button id="createAccountSubmitBtn">Tạo</button>
+            <div id="create-status"></div>
+        </div>
+    </div>
+    
+    <!-- Full Article Page -->
+    <div id="fullArticlePage">
+        <button id="backToMainBtn">Quay lại trang chính</button>
+        <h2 id="articleTitle"></h2>
+        <img id="articleImage" class="main-image" src="" alt="Hình ảnh">
+        <p id="articleDescription"></p>
+        <div id="articleChapters"></div>
+        <div class="author" id="articleAuthor"></div>
+    </div>
+
+
+    <script type="module">
+        // Firebase configuration from the user's prompt
+        const firebaseConfig = {
+          apiKey: "AIzaSyDnpmDzGFRI9xO9EEtEpI08Eq7eStFlmrs",
+          authDomain: "tintuc-abf6f.firebaseapp.com",
+          projectId: "tintuc-abf6f",
+          storageBucket: "tintuc-abf6f.firebasestorage.app",
+          messagingSenderId: "331457798860",
+          appId: "1:331457798860:web:5d36bb68868323669b9869",
+          measurementId: "G-RX51JVRPEC"
+        };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        setLogLevel('debug');
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // UI elements
+        const sidebar = document.getElementById("mySidebar");
+        const mainContent = document.getElementById("main");
+        const newsPage = document.getElementById("newsPage");
+        const newsContainer = document.getElementById("newsContainer");
+        const loginBtn = document.getElementById("loginBtn");
+        const newsBtn = document.getElementById("newsBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const changePasswordBtn = document.getElementById("changePasswordBtn");
+        const createAccountBtn = document.getElementById("createAccountBtn");
+        const userInfo = document.getElementById("user-info");
+        const emailInput = document.getElementById("emailInput");
+        const passwordInput = document.getElementById("passwordInput");
+        const newsTitleInput = document.getElementById("newsTitle");
+        const newsImageUrlInput = document.getElementById("newsImageUrl");
+        const newsDescriptionInput = document.getElementById("newsDescription");
+        const chaptersContainer = document.getElementById("chaptersContainer");
+        const addChapterBtn = document.getElementById("addChapterBtn");
+        const menuToggle = document.getElementById("menuToggle");
+        
+        const fullArticlePage = document.getElementById("fullArticlePage");
+        const articleTitle = document.getElementById("articleTitle");
+        const articleImage = document.getElementById("articleImage");
+        const articleDescription = document.getElementById("articleDescription");
+        const articleChapters = document.getElementById("articleChapters");
+        const articleAuthor = document.getElementById("articleAuthor");
+        const backToMainBtn = document.getElementById("backToMainBtn");
+
+        // Modals
+        const loginModal = document.getElementById("loginModal");
+        const changePasswordModal = document.getElementById("changePasswordModal");
+        const createAccountModal = document.getElementById("createAccountModal");
+        
+        // Close buttons for modals
+        const closeButtons = document.querySelectorAll(".close-button");
+        closeButtons.forEach(btn => {
+            btn.onclick = function() {
+                btn.closest('.modal').style.display = "none";
+            }
+        });
+        
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        }
+        
+        // Login functionality
+        loginBtn.onclick = function() {
+            loginModal.style.display = "flex";
+        }
+        
+        const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+        loginSubmitBtn.onclick = async function() {
+            const authStatus = document.getElementById("auth-status");
+            
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authStatus.textContent = "Đang đăng nhập...";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                authStatus.textContent = "Đăng nhập thành công!";
+                loginModal.style.display = "none";
+            } catch (error) {
+                console.error("Lỗi đăng nhập:", error);
+                if (error.code === 'auth/invalid-credential') {
+                    authStatus.textContent = "Lỗi: Email hoặc mật khẩu không hợp lệ. Vui lòng kiểm tra lại.";
+                } else {
+                    authStatus.textContent = "Lỗi: " + error.message;
+                }
+            }
+        }
+        
+        // Logout functionality
+        logoutBtn.onclick = async function() {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Lỗi đăng xuất:", error);
+            }
+        }
+        
+        // Change password functionality
+        changePasswordBtn.onclick = function() {
+            changePasswordModal.style.display = "flex";
+        }
+        
+        const changePasswordSubmitBtn = document.getElementById("changePasswordSubmitBtn");
+        changePasswordSubmitBtn.onclick = async function() {
+            const newPasswordInput = document.getElementById("newPasswordInput");
+            const passwordStatus = document.getElementById("password-status");
+            const newPassword = newPasswordInput.value;
+            
+            const user = auth.currentUser;
+            if (user) {
+                try {
+                    await updatePassword(user, newPassword);
+                    passwordStatus.textContent = "Đổi mật khẩu thành công!";
+                } catch (error) {
+                    console.error("Lỗi đổi mật khẩu:", error);
+                    passwordStatus.textContent = "Lỗi: " + error.message;
+                }
+            }
+        }
+        
+        // Create account functionality
+        createAccountBtn.onclick = function() {
+            createAccountModal.style.display = "flex";
+        }
+        
+        const createAccountSubmitBtn = document.getElementById("createAccountSubmitBtn");
+        createAccountSubmitBtn.onclick = async function() {
+            const newEmailInput = document.getElementById("newEmailInput");
+            const newPasswordInput2 = document.getElementById("newPasswordInput2");
+            const createStatus = document.getElementById("create-status");
+            const newEmail = newEmailInput.value;
+            const newPassword = newPasswordInput2.value;
+
+            try {
+                await createUserWithEmailAndPassword(auth, newEmail, newPassword);
+                createStatus.textContent = "Tạo tài khoản thành công!";
+            } catch (error) {
+                console.error("Lỗi tạo tài khoản:", error);
+                createStatus.textContent = "Lỗi: " + error.message;
+            }
+        }
+        
+        // Add chapter functionality
+        addChapterBtn.onclick = function() {
+            const chapterDiv = document.createElement('div');
+            chapterDiv.classList.add('chapter-container');
+            chapterDiv.innerHTML = `
+                <input type="text" class="chapter-title-input" placeholder="Tiêu đề chương">
+                <input type="text" class="chapter-image-input" placeholder="Đường dẫn ảnh chương">
+                <textarea class="chapter-content-input" placeholder="Nội dung chương"></textarea>
+                <button class="remove-chapter-btn">Xóa chương</button>
+            `;
+            chaptersContainer.appendChild(chapterDiv);
+            
+            // Add event listener to the new remove button
+            chapterDiv.querySelector('.remove-chapter-btn').onclick = function() {
+                chapterDiv.remove();
+            };
+        };
+
+        // Submit news functionality
+        const submitNewsBtn = document.getElementById("submitNewsBtn");
+        submitNewsBtn.onclick = async function() {
+            const newsTitle = newsTitleInput.value;
+            const newsImageUrl = newsImageUrlInput.value || '';
+            const newsDescription = newsDescriptionInput.value;
+            const user = auth.currentUser;
+            
+            // Get all chapters
+            const chapterElements = document.querySelectorAll('.chapter-container');
+            const chapters = [];
+            chapterElements.forEach(chapterEl => {
+                chapters.push({
+                    title: chapterEl.querySelector('.chapter-title-input').value,
+                    imageUrl: chapterEl.querySelector('.chapter-image-input').value || '',
+                    content: chapterEl.querySelector('.chapter-content-input').value
+                });
+            });
+            
+            if (!newsTitle || !newsDescription || !user || chapters.length === 0) {
+                console.log("Vui lòng điền đầy đủ tiêu đề, mô tả và thêm ít nhất một chương.");
+                return;
+            }
+            
+            try {
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), {
+                    title: newsTitle,
+                    description: newsDescription,
+                    imageUrl: newsImageUrl,
+                    chapters: chapters,
+                    author: user.email,
+                    createdAt: new Date()
+                });
+                // Clear inputs and switch back to main page
+                newsTitleInput.value = "";
+                newsImageUrlInput.value = "";
+                newsDescriptionInput.value = "";
+                chaptersContainer.innerHTML = "";
+                mainContent.style.display = "block";
+                newsPage.style.display = "none";
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                console.log("Có lỗi xảy ra khi đăng bài.");
+            }
+        }
+
+        // News button functionality
+        newsBtn.onclick = function() {
+            mainContent.style.display = "none";
+            newsPage.style.display = "flex";
+            fullArticlePage.style.display = "none";
+        }
+        
+        // Back to main button
+        backToMainBtn.onclick = function() {
+            fullArticlePage.style.display = "none";
+            mainContent.style.display = "block";
+        }
+
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                userInfo.textContent = `Xin chào, ${user.email}`;
+                userInfo.style.display = "block";
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+                changePasswordBtn.style.display = "block";
+                newsBtn.style.display = "block";
+                
+                // Show create account button only for admin
+                if (user.email === 'admin@myapp.com') {
+                    createAccountBtn.style.display = "block";
+                } else {
+                    createAccountBtn.style.display = "none";
+                }
+            } else {
+                // User is signed out
+                userInfo.textContent = "";
+                userInfo.style.display = "none";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+                changePasswordBtn.style.display = "none";
+                createAccountBtn.style.display = "none";
+                
+                // Clear the password input field
+                passwordInput.value = "";
+            }
+        });
+
+        // LẮNG NGHE VÀ HIỂN THỊ TIN TỨC CHO TẤT CẢ MỌI NGƯỜI
+        const q = query(collection(db, `/artifacts/${appId}/public/data/news`));
+        onSnapshot(q, (querySnapshot) => {
+            let newsList = [];
+            querySnapshot.forEach((doc) => {
+                newsList.push(doc.data());
+            });
+            
+            // Sort the news articles by creation date (newest first)
+            newsList.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+
+            // Render the news articles
+            newsContainer.innerHTML = '';
+            newsList.forEach(news => {
+                const card = document.createElement('div');
+                card.classList.add('news-card');
+                
+                let imageHtml = news.imageUrl ? `<img src="${news.imageUrl}" alt="${news.title}" onerror="this.style.display='none'">` : '';
+                card.innerHTML = `
+                    ${imageHtml}
+                    <h3>${news.title}</h3>
+                    <p>${news.description}</p>
+                    <div class="author">Đăng bởi: ${news.author}</div>
+                `;
+                newsContainer.appendChild(card);
+
+                // Thêm sự kiện nhấp chuột để mở toàn bộ nội dung trong trang mới
+                card.onclick = () => {
+                    articleTitle.textContent = news.title;
+                    articleDescription.textContent = news.description;
+                    articleAuthor.textContent = `Đăng bởi: ${news.author}`;
+
+                    if (news.imageUrl) {
+                        articleImage.src = news.imageUrl;
+                        articleImage.style.display = 'block';
+                    } else {
+                        articleImage.style.display = 'none';
+                    }
+
+                    // Render chapters
+                    articleChapters.innerHTML = '';
+                    news.chapters.forEach(chapter => {
+                        const chapterDiv = document.createElement('div');
+                        chapterDiv.innerHTML = `
+                            <h4 class="chapter-title">${chapter.title}</h4>
+                            ${chapter.imageUrl ? `<img src="${chapter.imageUrl}" class="chapter-image" alt="${chapter.title}" onerror="this.style.display='none'">` : ''}
+                            <p class="chapter-content">${chapter.content}</p>
+                        `;
+                        articleChapters.appendChild(chapterDiv);
+                    });
+                    
+                    // Ẩn tất cả các trang khác và chỉ hiển thị trang bài viết
+                    mainContent.style.display = 'none';
+                    newsPage.style.display = 'none';
+                    fullArticlePage.style.display = 'block';
+                    window.scrollTo(0, 0); // cuộn lên đầu trang
+                };
+            });
+        });
+
+        // Toggle sidebar using a button
+        menuToggle.onclick = function() {
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('pushed');
+        };
+
+        // Close sidebar when clicking outside on mobile
+        window.addEventListener('click', function(e) {
+            if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+                mainContent.classList.remove('pushed');
+            }
+        });
+    </script>
+</body>
+</html>
