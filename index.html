@@ -174,7 +174,7 @@
         }
 
         /* News page styling */
-        .news-page {
+        .news-page, .settings-page {
             display: none;
             flex-direction: column;
             align-items: center;
@@ -242,13 +242,13 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            cursor: pointer;
+            position: relative;
         }
 
         .news-card h3 {
             margin-top: 0;
-            font-size: 22px; /* Tăng kích thước phông chữ */
-            color: #007bff; /* Đổi màu chữ sang xanh dương */
+            font-size: 22px;
+            color: #007bff;
         }
 
         .news-card p {
@@ -267,6 +267,20 @@
             height: auto;
             border-radius: 4px;
             margin-bottom: 10px;
+        }
+
+        .edit-news-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f1c40f;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none; /* Hide by default */
         }
         
         /* Full Article Page Styling */
@@ -287,8 +301,8 @@
         }
         
         #fullArticlePage .chapter-title {
-            font-size: 18px; /* Tăng kích thước phông chữ */
-            color: #00aaff; /* Đổi màu chữ sang xanh lam */
+            font-size: 18px;
+            color: #00aaff;
             margin-top: 20px;
             margin-bottom: 10px;
         }
@@ -313,11 +327,7 @@
             margin-bottom: 20px;
         }
 
-        #backToMainBtn {
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            z-index: 1002;
+        .back-btn {
             background-color: #2c3e50;
             color: white;
             border: none;
@@ -325,6 +335,14 @@
             cursor: pointer;
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        #backToMainBtn {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            z-index: 1002;
         }
 
         /* Responsive cho thiết bị di động */
@@ -361,6 +379,7 @@
         <a href="javascript:void(0)" id="newsBtn" style="display:none;">Tin mới</a>
         <a href="javascript:void(0)" id="changePasswordBtn" style="display:none;">Đổi mật khẩu</a>
         <a href="javascript:void(0)" id="createAccountBtn" style="display:none;">Tạo tài khoản</a>
+        <a href="javascript:void(0)" id="settingsBtn" style="display:none;">Cấu hình</a>
         <a href="javascript:void(0)" id="logoutBtn" style="display:none;">Đăng xuất</a>
     </div>
 
@@ -370,6 +389,7 @@
     </div>
     
     <div id="newsPage" class="news-page">
+        <button class="back-btn" id="backFromNewsBtn">Quay lại</button>
         <h2>Viết tin mới</h2>
         <input type="text" id="newsTitle" placeholder="Tiêu đề bài viết">
         <input type="text" id="newsImageUrl" placeholder="Đường dẫn ảnh mô tả">
@@ -377,6 +397,22 @@
         <div id="chaptersContainer"></div>
         <button class="add-chapter-btn" id="addChapterBtn">Thêm chương</button>
         <button id="submitNewsBtn">Đăng bài</button>
+    </div>
+
+    <!-- Trang Cấu hình -->
+    <div id="settingsPage" class="settings-page">
+        <button class="back-btn" id="backFromSettingsBtn">Quay lại</button>
+        <h2>Cấu hình</h2>
+        <p>Để tải ảnh lên, bạn có thể sử dụng các dịch vụ lưu trữ hình ảnh miễn phí. Sau khi tải lên, bạn sẽ nhận được một đường link để dán vào trường "Đường dẫn ảnh mô tả".</p>
+        <div style="margin-top: 20px;">
+            <h3>Hướng dẫn các bước:</h3>
+            <ol>
+                <li>Truy cập một dịch vụ lưu trữ ảnh miễn phí như <a href="https://imgur.com/upload" target="_blank" style="color: #007bff; text-decoration: underline;">Imgur</a>.</li>
+                <li>Tải ảnh của bạn lên.</li>
+                <li>Sao chép đường link của ảnh đã tải lên.</li>
+                <li>Quay lại trang "Viết tin mới" và dán đường link đó vào trường "Đường dẫn ảnh mô tả".</li>
+            </ol>
+        </div>
     </div>
 
     <!-- The Modal -->
@@ -416,7 +452,7 @@
     
     <!-- Full Article Page -->
     <div id="fullArticlePage">
-        <button id="backToMainBtn">Quay lại trang chính</button>
+        <button class="back-btn" id="backToMainBtn">Quay lại trang chính</button>
         <h2 id="articleTitle"></h2>
         <img id="articleImage" class="main-image" src="" alt="Hình ảnh">
         <p id="articleDescription"></p>
@@ -442,7 +478,7 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         setLogLevel('debug');
         
@@ -451,16 +487,21 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // Global variable to store the ID of the document being edited
+        let editingDocId = null;
+
         // UI elements
         const sidebar = document.getElementById("mySidebar");
         const mainContent = document.getElementById("main");
         const newsPage = document.getElementById("newsPage");
+        const settingsPage = document.getElementById("settingsPage");
         const newsContainer = document.getElementById("newsContainer");
         const loginBtn = document.getElementById("loginBtn");
         const newsBtn = document.getElementById("newsBtn");
         const logoutBtn = document.getElementById("logoutBtn");
         const changePasswordBtn = document.getElementById("changePasswordBtn");
         const createAccountBtn = document.getElementById("createAccountBtn");
+        const settingsBtn = document.getElementById("settingsBtn");
         const userInfo = document.getElementById("user-info");
         const emailInput = document.getElementById("emailInput");
         const passwordInput = document.getElementById("passwordInput");
@@ -470,6 +511,7 @@
         const chaptersContainer = document.getElementById("chaptersContainer");
         const addChapterBtn = document.getElementById("addChapterBtn");
         const menuToggle = document.getElementById("menuToggle");
+        const submitNewsBtn = document.getElementById("submitNewsBtn");
         
         const fullArticlePage = document.getElementById("fullArticlePage");
         const articleTitle = document.getElementById("articleTitle");
@@ -478,6 +520,8 @@
         const articleChapters = document.getElementById("articleChapters");
         const articleAuthor = document.getElementById("articleAuthor");
         const backToMainBtn = document.getElementById("backToMainBtn");
+        const backFromSettingsBtn = document.getElementById("backFromSettingsBtn");
+        const backFromNewsBtn = document.getElementById("backFromNewsBtn");
 
         // Modals
         const loginModal = document.getElementById("loginModal");
@@ -580,13 +624,13 @@
         }
         
         // Add chapter functionality
-        addChapterBtn.onclick = function() {
+        function addChapter(title = '', imageUrl = '', content = '') {
             const chapterDiv = document.createElement('div');
             chapterDiv.classList.add('chapter-container');
             chapterDiv.innerHTML = `
-                <input type="text" class="chapter-title-input" placeholder="Tiêu đề chương">
-                <input type="text" class="chapter-image-input" placeholder="Đường dẫn ảnh chương">
-                <textarea class="chapter-content-input" placeholder="Nội dung chương"></textarea>
+                <input type="text" class="chapter-title-input" placeholder="Tiêu đề chương" value="${title}">
+                <input type="text" class="chapter-image-input" placeholder="Đường dẫn ảnh chương" value="${imageUrl}">
+                <textarea class="chapter-content-input" placeholder="Nội dung chương">${content}</textarea>
                 <button class="remove-chapter-btn">Xóa chương</button>
             `;
             chaptersContainer.appendChild(chapterDiv);
@@ -595,10 +639,10 @@
             chapterDiv.querySelector('.remove-chapter-btn').onclick = function() {
                 chapterDiv.remove();
             };
-        };
+        }
+        addChapterBtn.onclick = () => addChapter();
 
         // Submit news functionality
-        const submitNewsBtn = document.getElementById("submitNewsBtn");
         submitNewsBtn.onclick = async function() {
             const newsTitle = newsTitleInput.value;
             const newsImageUrl = newsImageUrlInput.value || '';
@@ -616,44 +660,85 @@
                 });
             });
             
-            if (!newsTitle || !newsDescription || !user || chapters.length === 0) {
-                console.log("Vui lòng điền đầy đủ tiêu đề, mô tả và thêm ít nhất một chương.");
+            if (!newsTitle || !newsDescription || !user) {
+                console.log("Vui lòng điền đầy đủ tiêu đề, mô tả.");
                 return;
             }
-            
-            try {
-                await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), {
-                    title: newsTitle,
-                    description: newsDescription,
-                    imageUrl: newsImageUrl,
-                    chapters: chapters,
-                    author: user.email,
-                    createdAt: new Date()
-                });
-                // Clear inputs and switch back to main page
-                newsTitleInput.value = "";
-                newsImageUrlInput.value = "";
-                newsDescriptionInput.value = "";
-                chaptersContainer.innerHTML = "";
-                mainContent.style.display = "block";
-                newsPage.style.display = "none";
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                console.log("Có lỗi xảy ra khi đăng bài.");
-            }
-        }
 
-        // News button functionality
-        newsBtn.onclick = function() {
-            mainContent.style.display = "none";
-            newsPage.style.display = "flex";
-            fullArticlePage.style.display = "none";
+            if (editingDocId) {
+                // Update existing article
+                try {
+                    await updateDoc(doc(db, `/artifacts/${appId}/public/data/news`, editingDocId), {
+                        title: newsTitle,
+                        description: newsDescription,
+                        imageUrl: newsImageUrl,
+                        chapters: chapters,
+                    });
+                    console.log("Bài viết đã được cập nhật thành công!");
+                } catch (e) {
+                    console.error("Lỗi cập nhật bài viết: ", e);
+                    console.log("Có lỗi xảy ra khi cập nhật bài viết.");
+                }
+            } else {
+                // Add new article
+                try {
+                    await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), {
+                        title: newsTitle,
+                        description: newsDescription,
+                        imageUrl: newsImageUrl,
+                        chapters: chapters,
+                        author: user.email,
+                        createdAt: new Date()
+                    });
+                    console.log("Bài viết đã được đăng thành công!");
+                } catch (e) {
+                    console.error("Lỗi đăng bài: ", e);
+                    console.log("Có lỗi xảy ra khi đăng bài.");
+                }
+            }
+            
+            // Clear inputs and switch back to main page
+            editingDocId = null;
+            submitNewsBtn.textContent = "Đăng bài";
+            newsTitleInput.value = "";
+            newsImageUrlInput.value = "";
+            newsDescriptionInput.value = "";
+            chaptersContainer.innerHTML = "";
+            showPage('main');
         }
         
-        // Back to main button
+        function showPage(pageId) {
+            document.querySelectorAll('.main-content, .news-page, .settings-page, #fullArticlePage').forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById(pageId).style.display = 'flex';
+        }
+
+        // Navigation button functionality
+        newsBtn.onclick = function() {
+            editingDocId = null;
+            submitNewsBtn.textContent = "Đăng bài";
+            newsTitleInput.value = "";
+            newsImageUrlInput.value = "";
+            newsDescriptionInput.value = "";
+            chaptersContainer.innerHTML = "";
+            showPage('newsPage');
+        }
+        
+        settingsBtn.onclick = function() {
+            showPage('settingsPage');
+        }
+        
         backToMainBtn.onclick = function() {
-            fullArticlePage.style.display = "none";
-            mainContent.style.display = "block";
+            showPage('main');
+        }
+        
+        backFromSettingsBtn.onclick = function() {
+            showPage('main');
+        }
+        
+        backFromNewsBtn.onclick = function() {
+            showPage('main');
         }
 
         // Auth state listener
@@ -666,6 +751,7 @@
                 logoutBtn.style.display = "block";
                 changePasswordBtn.style.display = "block";
                 newsBtn.style.display = "block";
+                settingsBtn.style.display = "block";
                 
                 // Show create account button only for admin
                 if (user.email === 'admin@myapp.com') {
@@ -681,6 +767,7 @@
                 logoutBtn.style.display = "none";
                 changePasswordBtn.style.display = "none";
                 createAccountBtn.style.display = "none";
+                settingsBtn.style.display = "none";
                 
                 // Clear the password input field
                 passwordInput.value = "";
@@ -692,7 +779,7 @@
         onSnapshot(q, (querySnapshot) => {
             let newsList = [];
             querySnapshot.forEach((doc) => {
-                newsList.push(doc.data());
+                newsList.push({ id: doc.id, ...doc.data() });
             });
             
             // Sort the news articles by creation date (newest first)
@@ -700,6 +787,7 @@
 
             // Render the news articles
             newsContainer.innerHTML = '';
+            const user = auth.currentUser;
             newsList.forEach(news => {
                 const card = document.createElement('div');
                 card.classList.add('news-card');
@@ -710,8 +798,32 @@
                     <h3>${news.title}</h3>
                     <p>${news.description}</p>
                     <div class="author">Đăng bởi: ${news.author}</div>
+                    <button class="edit-news-btn">Sửa</button>
                 `;
                 newsContainer.appendChild(card);
+
+                const editBtn = card.querySelector('.edit-news-btn');
+                if (user && user.email === news.author) {
+                    editBtn.style.display = 'block';
+                } else {
+                    editBtn.style.display = 'none';
+                }
+
+                editBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent card click
+                    editingDocId = news.id;
+                    newsTitleInput.value = news.title;
+                    newsImageUrlInput.value = news.imageUrl;
+                    newsDescriptionInput.value = news.description;
+                    
+                    chaptersContainer.innerHTML = '';
+                    news.chapters.forEach(chapter => {
+                        addChapter(chapter.title, chapter.imageUrl, chapter.content);
+                    });
+
+                    submitNewsBtn.textContent = "Cập nhật bài viết";
+                    showPage('newsPage');
+                };
 
                 // Thêm sự kiện nhấp chuột để mở toàn bộ nội dung trong trang mới
                 card.onclick = () => {
@@ -739,9 +851,10 @@
                     });
                     
                     // Ẩn tất cả các trang khác và chỉ hiển thị trang bài viết
+                    fullArticlePage.style.display = 'block';
                     mainContent.style.display = 'none';
                     newsPage.style.display = 'none';
-                    fullArticlePage.style.display = 'block';
+                    settingsPage.style.display = 'none';
                     window.scrollTo(0, 0); // cuộn lên đầu trang
                 };
             });
