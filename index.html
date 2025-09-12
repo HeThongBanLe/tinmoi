@@ -396,6 +396,7 @@
             <input type="text" id="newsDescription" placeholder="Mô tả ngắn">
             <div id="chaptersContainer"></div>
             <button class="add-item-btn" id="addChapterBtn">Thêm chương</button>
+	    <button class="add-item-btn" id="addFieldBtn" style="display:none;">Thêm trường</button>
             <button id="submitNewsBtn" class="bg-blue-500 hover:bg-blue-600">Đăng bài</button>
         </div>
     </div>
@@ -537,6 +538,7 @@
         const newsDescriptionInput = document.getElementById("newsDescription");
         const chaptersContainer = document.getElementById("chaptersContainer");
         const addChapterBtn = document.getElementById("addChapterBtn");
+	const addFieldBtn = document.getElementById("addFieldBtn");
         const menuToggle = document.getElementById("menuToggle");
         const submitNewsBtn = document.getElementById("submitNewsBtn");
         const newsPageTitle = document.getElementById("newsPageTitle");
@@ -647,7 +649,8 @@
             chaptersContainer.appendChild(chapterDiv);
             chapterDiv.querySelector('.remove-item-btn').onclick = () => chapterDiv.remove();
         }
-        addChapterBtn.onclick = () => addChapter();
+        addChapterBtn.onclick = () => { if (currentPostType === 'news') addChapter(); };
+	addFieldBtn.onclick = () => { if (currentPostType === 'stats') addField(); };
 	// --- Thêm field cho bài thống kê ---
 function addField(fieldName = '') {
     const div = document.createElement('div');
@@ -731,6 +734,8 @@ submitNewsBtn.onclick = async function() {
             chaptersContainer.innerHTML = "";
             showPage('newsPage');
 	    addChapter();
+	    addChapterBtn.style.display = 'inline-block';
+	    addFieldBtn.style.display = 'none';
         };
 
        statsBtn.onclick = () => {
@@ -742,6 +747,9 @@ submitNewsBtn.onclick = async function() {
     chaptersContainer.innerHTML = "";
     showPage('newsPage');
     addField(); // 👈 thống kê thì thêm trường
+    addChapterBtn.style.display = 'none';
+    addFieldBtn.style.display = 'inline-block';
+
 };
 
 
