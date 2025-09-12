@@ -311,6 +311,22 @@
             font-size: 12px;
             display: none;
         }
+ .delete-news-btn {
+    position: absolute;
+    top: 48px; /* nằm dưới nút sửa */
+    right: 12px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    display: none;
+}
+.delete-news-btn:hover {
+    background-color: #c0392b;
+}
 
         /* Full Article Page Styling */
         #fullArticlePage, #statsEntryPage {
@@ -483,7 +499,10 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel, updateDoc, doc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+       import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel, updateDoc, doc, getDocs, deleteDoc } 
+    from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
         
         setLogLevel('debug');
         
@@ -751,6 +770,7 @@
                     <p>${news.description}</p>
                     <div class="author">Đăng bởi: ${news.author}</div>
                     <button class="edit-news-btn">Sửa</button>
+		    <button class="delete-news-btn">Xóa</button>
                 `;
                 newsContainer.appendChild(card);
 
@@ -776,6 +796,37 @@
                     submitNewsBtn.textContent = "Cập nhật bài viết";
                     showPage('newsPage');
                 };
+
+
+		const deleteBtn = card.querySelector('.delete-news-btn');
+if (user && user.email === news.author) {
+    deleteBtn.style.display = 'block';
+} else {
+    deleteBtn.style.display = 'none';
+}
+
+deleteBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) {
+        try {
+            // Nếu là bài thống kê => xóa households trước
+            if (news.type === 'stats') {
+                const householdsRef = collection(db, `/artifacts/${appId}/public/data/news/${news.id}/households`);
+                const householdsSnap = await getDocs(householdsRef);
+                for (const hDoc of householdsSnap.docs) {
+                    await deleteDoc(hDoc.ref);
+                }
+            }
+            // Xóa document chính
+            await deleteDoc(doc(db, `/artifacts/${appId}/public/data/news`, news.id));
+            console.log("Bài viết đã bị xóa!");
+        } catch (error) {
+            console.error("Lỗi khi xóa bài viết:", error);
+        }
+    }
+};
+
+
 
                 card.onclick = () => {
                     if (news.type === 'news') {
