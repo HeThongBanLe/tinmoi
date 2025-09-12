@@ -158,7 +158,7 @@
             background-color: #34495e;
         }
 
-        #auth-status {
+        #auth-status, #post-status-message {
             margin-top: 12px;
             font-size: 14px;
             text-align: center;
@@ -239,7 +239,8 @@
             cursor: pointer;
         }
         
-        .item-card {
+        /* Cập nhật tên class để tránh xung đột */
+        .chapter-card, .person-card {
             background-color: #ecf0f1;
             padding: 16px;
             margin-bottom: 12px;
@@ -335,6 +336,32 @@
             margin-bottom: 12px;
             border-left: 4px solid #3498db;
         }
+        
+        #fullArticlePage .chapter {
+            margin-top: 24px;
+        }
+
+        #fullArticlePage .chapter-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        
+        #fullArticlePage .chapter-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-top: 12px;
+            margin-bottom: 16px;
+        }
+
+        #fullArticlePage .chapter-content {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #555;
+        }
+
 
         @media (max-width: 600px) {
             .sidebar {
@@ -381,6 +408,7 @@
             <div id="chaptersContainer"></div>
             <button class="add-item-btn" id="addChapterBtn">Thêm chương</button>
             <button id="submitNewsBtn" class="bg-blue-500 hover:bg-blue-600">Đăng bài</button>
+            <div id="post-status-message" class="text-sm mt-2 text-red-500"></div>
         </div>
     </div>
 
@@ -521,6 +549,7 @@
         const menuToggle = document.getElementById("menuToggle");
         const submitNewsBtn = document.getElementById("submitNewsBtn");
         const newsPageTitle = document.getElementById("newsPageTitle");
+        const postStatusMessage = document.getElementById("post-status-message");
         
         const fullArticlePage = document.getElementById("fullArticlePage");
         const articleTitle = document.getElementById("articleTitle");
@@ -618,7 +647,8 @@
         // Add chapter functionality for news/stats post
         function addChapter(title = '', imageUrl = '', content = '') {
             const chapterDiv = document.createElement('div');
-            chapterDiv.classList.add('item-card');
+            // Cập nhật tên class để tránh xung đột
+            chapterDiv.classList.add('chapter-card'); 
             chapterDiv.innerHTML = `
                 <input type="text" class="chapter-title-input" placeholder="Tiêu đề chương" value="${title}">
                 <input type="text" class="chapter-image-input" placeholder="Đường dẫn ảnh chương" value="${imageUrl}">
@@ -632,14 +662,21 @@
 
         // Submit news/stats functionality
         submitNewsBtn.onclick = async function() {
+            // Hiển thị trạng thái
+            postStatusMessage.textContent = "";
+
             const user = auth.currentUser;
-            if (!user) return;
+            if (!user) {
+                postStatusMessage.textContent = "Bạn cần đăng nhập để đăng bài.";
+                return;
+            }
             
             const postData = {
                 title: newsTitleInput.value,
                 description: newsDescriptionInput.value,
                 imageUrl: newsImageUrlInput.value || '',
-                chapters: Array.from(document.querySelectorAll('.chapter-container')).map(el => ({
+                // Cập nhật tên class để tránh xung đột
+                chapters: Array.from(document.querySelectorAll('.chapter-card')).map(el => ({
                     title: el.querySelector('.chapter-title-input').value,
                     imageUrl: el.querySelector('.chapter-image-input').value || '',
                     content: el.querySelector('.chapter-content-input').value
@@ -650,33 +687,49 @@
             };
             
             if (!postData.title || !postData.description) {
-                console.log("Vui lòng điền đầy đủ tiêu đề và mô tả.");
+                postStatusMessage.textContent = "Vui lòng điền đầy đủ Tiêu đề và Mô tả.";
                 return;
             }
 
             try {
+                // Hiển thị trạng thái đang xử lý
+                submitNewsBtn.textContent = editingDocId ? "Đang cập nhật..." : "Đang đăng bài...";
+                submitNewsBtn.disabled = true;
+
                 if (editingDocId) {
                     await updateDoc(doc(db, `/artifacts/${appId}/public/data/news`, editingDocId), postData);
+                    postStatusMessage.textContent = "Bài viết đã được cập nhật thành công!";
                     console.log("Bài viết đã được cập nhật thành công!");
                 } else {
                     await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
+                    postStatusMessage.textContent = "Bài viết đã được đăng thành công!";
                     console.log("Bài viết đã được đăng thành công!");
                 }
             } catch (e) {
+                postStatusMessage.textContent = "Lỗi khi đăng/cập nhật bài viết.";
                 console.error("Lỗi khi đăng/cập nhật bài viết: ", e);
+            } finally {
+                // Đặt lại trạng thái ban đầu cho nút
+                submitNewsBtn.textContent = editingDocId ? "Cập nhật bài viết" : "Đăng bài";
+                submitNewsBtn.disabled = false;
             }
             
-            // Clear inputs and switch back to main page
-            editingDocId = null;
-            submitNewsBtn.textContent = "Đăng bài";
-            newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
-            chaptersContainer.innerHTML = "";
-            showPage('main');
+            // Xóa nội dung và chuyển về trang chính sau một khoảng thời gian
+            setTimeout(() => {
+                editingDocId = null;
+                newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
+                chaptersContainer.innerHTML = "";
+                postStatusMessage.textContent = "";
+                showPage('main');
+            }, 2000);
         };
         
         function showPage(pageId) {
             document.querySelectorAll('.page, .main-content').forEach(page => page.style.display = 'none');
-            document.getElementById(pageId).style.display = 'flex';
+            const page = document.getElementById(pageId);
+            if (page) {
+                page.style.display = 'flex';
+            }
         }
 
         // Navigation button functionality
@@ -687,17 +740,14 @@
             submitNewsBtn.textContent = "Đăng bài";
             newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
             chaptersContainer.innerHTML = "";
+            addChapter();
             showPage('newsPage');
         };
 
         statsBtn.onclick = () => {
             currentPostType = 'stats';
-            newsPageTitle.textContent = "Viết bài thống kê";
-            editingDocId = null;
-            submitNewsBtn.textContent = "Đăng bài";
-            newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
-            chaptersContainer.innerHTML = "";
-            showPage('newsPage');
+            statsEntryPageTitle.textContent = "Nhập liệu thống kê hộ gia đình";
+            showPage('statsEntryPage');
         };
 
         settingsBtn.onclick = () => showPage('settingsPage');
@@ -770,8 +820,10 @@
                     newsImageUrlInput.value = news.imageUrl;
                     newsDescriptionInput.value = news.description;
                     
-                    chaptersContainer.innerHTML = '';
-                    news.chapters.forEach(chapter => addChapter(chapter.title, chapter.imageUrl, chapter.content));
+                    chaptersContainer.innerHTML = "";
+                    if (news.chapters) {
+                        news.chapters.forEach(chapter => addChapter(chapter.title, chapter.imageUrl, chapter.content));
+                    }
                     
                     submitNewsBtn.textContent = "Cập nhật bài viết";
                     showPage('newsPage');
@@ -792,15 +844,18 @@
                         }
                         
                         articleChapters.innerHTML = '';
-                        news.chapters.forEach(chapter => {
-                            const chapterDiv = document.createElement('div');
-                            chapterDiv.innerHTML = `
-                                <h4 class="text-xl font-bold mt-6 mb-2">${chapter.title}</h4>
-                                ${chapter.imageUrl ? `<img src="${chapter.imageUrl}" class="w-full h-auto rounded-lg mb-4" alt="${chapter.title}" onerror="this.style.display='none'">` : ''}
-                                <p class="text-gray-700 leading-relaxed whitespace-pre-wrap">${chapter.content}</p>
-                            `;
-                            articleChapters.appendChild(chapterDiv);
-                        });
+                        if (news.chapters) {
+                          news.chapters.forEach(chapter => {
+                              const chapterDiv = document.createElement('div');
+                              chapterDiv.classList.add('chapter');
+                              chapterDiv.innerHTML = `
+                                  <h4 class="chapter-title">${chapter.title}</h4>
+                                  ${chapter.imageUrl ? `<img src="${chapter.imageUrl}" class="chapter-image" alt="${chapter.title}" onerror="this.style.display='none'">` : ''}
+                                  <p class="chapter-content">${chapter.content}</p>
+                              `;
+                              articleChapters.appendChild(chapterDiv);
+                          });
+                        }
                         showPage('fullArticlePage');
                         window.scrollTo(0, 0);
                     } else if (news.type === 'stats') {
@@ -816,7 +871,8 @@
         // Logic for Stats Entry Page
         function addPerson(person = {}) {
             const personDiv = document.createElement('div');
-            personDiv.classList.add('item-card');
+            // Cập nhật tên class để tránh xung đột
+            personDiv.classList.add('person-card');
             personDiv.innerHTML = `
                 <input type="text" class="person-name-input" placeholder="Tên" value="${person.name || ''}" required>
                 <input type="text" class="person-phone-input" placeholder="Số điện thoại" value="${person.phone || ''}">
@@ -833,7 +889,8 @@
             const user = auth.currentUser;
             if (!user || !currentStatsPostId) return;
 
-            const householdData = Array.from(document.querySelectorAll('.item-card')).map(el => ({
+            // Cập nhật tên class để tránh xung đột
+            const householdData = Array.from(document.querySelectorAll('.person-card')).map(el => ({
                 name: el.querySelector('.person-name-input').value,
                 phone: el.querySelector('.person-phone-input').value || '',
                 relationship: el.querySelector('.person-relationship-input').value || '',
@@ -889,6 +946,7 @@
         });
         
         // Initial state
+        addChapter();
         addPerson();
     </script>
 </body>
