@@ -515,7 +515,7 @@
         let editingDocId = null;
         let currentPostType = 'news';
         let currentStatsPostId = null;
-
+	let currentStatsFields = [];
         // UI elements
         const sidebar = document.getElementById("mySidebar");
         const mainContent = document.getElementById("main");
@@ -648,50 +648,73 @@
             chapterDiv.querySelector('.remove-item-btn').onclick = () => chapterDiv.remove();
         }
         addChapterBtn.onclick = () => addChapter();
+	// --- Thêm field cho bài thống kê ---
+function addField(fieldName = '') {
+    const div = document.createElement('div');
+    div.classList.add('item-card');
+    div.innerHTML = `
+        <input type="text" class="field-name-input" placeholder="Tên trường (vd: Họ tên, Nghề nghiệp)" value="${fieldName}">
+        <button class="remove-item-btn">Xóa</button>
+    `;
+    chaptersContainer.appendChild(div);
+    div.querySelector('.remove-item-btn').onclick = () => div.remove();
+}
 
         // Submit news/stats functionality
-        submitNewsBtn.onclick = async function() {
-            const user = auth.currentUser;
-            if (!user) return;
-            
-            const postData = {
-                title: newsTitleInput.value,
-                description: newsDescriptionInput.value,
-                imageUrl: newsImageUrlInput.value || '',
-                chapters: Array.from(document.querySelectorAll('.chapter-container')).map(el => ({
-                    title: el.querySelector('.chapter-title-input').value,
-                    imageUrl: el.querySelector('.chapter-image-input').value || '',
-                    content: el.querySelector('.chapter-content-input').value
-                })),
-                author: user.email,
-                type: currentPostType,
-                createdAt: new Date()
-            };
-            
-            if (!postData.title || !postData.description) {
-                console.log("Vui lòng điền đầy đủ tiêu đề và mô tả.");
-                return;
-            }
+submitNewsBtn.onclick = async function() {
+    const user = auth.currentUser;
+    if (!user) return;
 
-            try {
-                if (editingDocId) {
-                    await updateDoc(doc(db, `/artifacts/${appId}/public/data/news`, editingDocId), postData);
-                    console.log("Bài viết đã được cập nhật thành công!");
-                } else {
-                    await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
-                    console.log("Bài viết đã được đăng thành công!");
-                }
-            } catch (e) {
-                console.error("Lỗi khi đăng/cập nhật bài viết: ", e);
-            }
-            
-            // Clear inputs and switch back to main page
-            editingDocId = null;
-            submitNewsBtn.textContent = "Đăng bài";
-            newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
-            chaptersContainer.innerHTML = "";
-            showPage('main');
-        };
+    const postData = {
+        title: newsTitleInput.value,
+        description: newsDescriptionInput.value,
+        imageUrl: newsImageUrlInput.value || '',
+        author: user.email,
+        type: currentPostType,
+        createdAt: new Date()
+    };
+
+    // Nếu là news: lấy các item bên trong chaptersContainer (chỉ các chapter)
+    if (currentPostType === 'news') {
+        postData.chapters = Array.from(chaptersContainer.querySelectorAll('.item-card')).map(el => ({
+            title: (el.querySelector('.chapter-title-input')?.value) || '',
+            imageUrl: (el.querySelector('.chapter-image-input')?.value) || '',
+            content: (el.querySelector('.chapter-content-input')?.value) || ''
+        }));
+    }
+
+    // Nếu là stats: lấy các field-name-input trong chaptersContainer
+    if (currentPostType === 'stats') {
+        postData.fields = Array.from(chaptersContainer.querySelectorAll('.field-name-input'))
+            .map(input => input.value)
+            .filter(v => v.trim() !== '');
+    }
+
+    if (!postData.title || !postData.description) {
+        console.log("Vui lòng điền đầy đủ tiêu đề và mô tả.");
+        return;
+    }
+
+    try {
+        if (editingDocId) {
+            await updateDoc(doc(db, `/artifacts/${appId}/public/data/news`, editingDocId), postData);
+            console.log("Bài viết đã được cập nhật thành công!");
+        } else {
+            await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
+            console.log("Bài viết đã được đăng thành công!");
+        }
+    } catch (e) {
+        console.error("Lỗi khi đăng/cập nhật bài viết: ", e);
+    }
+
+    // Clear inputs and switch back to main page
+    editingDocId = null;
+    submitNewsBtn.textContent = "Đăng bài";
+    newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
+    chaptersContainer.innerHTML = "";
+    showPage('main');
+};
+
         
         function showPage(pageId) {
             document.querySelectorAll('.page, .main-content').forEach(page => page.style.display = 'none');
@@ -707,17 +730,20 @@
             newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
             chaptersContainer.innerHTML = "";
             showPage('newsPage');
+	    addChapter();
         };
 
-        statsBtn.onclick = () => {
-            currentPostType = 'stats';
-            newsPageTitle.textContent = "Viết bài thống kê";
-            editingDocId = null;
-            submitNewsBtn.textContent = "Đăng bài";
-            newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
-            chaptersContainer.innerHTML = "";
-            showPage('newsPage');
-        };
+       statsBtn.onclick = () => {
+    currentPostType = 'stats';
+    newsPageTitle.textContent = "Tạo mẫu thống kê";
+    editingDocId = null;
+    submitNewsBtn.textContent = "Đăng bài";
+    newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
+    chaptersContainer.innerHTML = "";
+    showPage('newsPage');
+    addField(); // 👈 thống kê thì thêm trường
+};
+
 
         settingsBtn.onclick = () => showPage('settingsPage');
         backToMainBtn.onclick = () => showPage('main');
@@ -781,21 +807,29 @@
                     editBtn.style.display = 'none';
                 }
 
-                editBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    editingDocId = news.id;
-                    currentPostType = news.type;
-                    newsPageTitle.textContent = news.type === 'news' ? "Viết tin mới" : "Viết bài thống kê";
-                    newsTitleInput.value = news.title;
-                    newsImageUrlInput.value = news.imageUrl;
-                    newsDescriptionInput.value = news.description;
-                    
-                    chaptersContainer.innerHTML = '';
-                    news.chapters.forEach(chapter => addChapter(chapter.title, chapter.imageUrl, chapter.content));
-                    
-                    submitNewsBtn.textContent = "Cập nhật bài viết";
-                    showPage('newsPage');
-                };
+              editBtn.onclick = (e) => {
+    e.stopPropagation();
+    editingDocId = news.id;
+    currentPostType = news.type;
+    newsPageTitle.textContent = news.type === 'news' ? "Viết tin mới" : "Viết bài thống kê";
+    newsTitleInput.value = news.title;
+    newsImageUrlInput.value = news.imageUrl || '';
+    newsDescriptionInput.value = news.description || '';
+
+    chaptersContainer.innerHTML = '';
+
+    if (news.type === 'news') {
+        // populate chapters
+        (news.chapters || []).forEach(chapter => addChapter(chapter.title, chapter.imageUrl, chapter.content));
+    } else if (news.type === 'stats') {
+        // populate fields for stats
+        (news.fields || []).forEach(fieldName => addField(fieldName));
+    }
+
+    submitNewsBtn.textContent = "Cập nhật bài viết";
+    showPage('newsPage');
+};
+
 
 
 		const deleteBtn = card.querySelector('.delete-news-btn');
@@ -854,56 +888,142 @@ deleteBtn.onclick = async (e) => {
                         });
                         showPage('fullArticlePage');
                         window.scrollTo(0, 0);
-                    } else if (news.type === 'stats') {
-                        // Show stats entry page for stats
-                        currentStatsPostId = news.id;
-                        statsEntryPageTitle.textContent = `Thống kê cho: ${news.title}`;
-                        showPage('statsEntryPage');
                     }
+else if (news.type === 'stats') {
+    currentStatsPostId = news.id;
+    statsEntryPageTitle.textContent = `Thống kê cho: ${news.title}`;
+    currentStatsFields = news.fields || []; // lấy danh sách fields do người tạo định nghĩa
+
+    // Hiện trang nhập liệu
+    showPage('statsEntryPage');
+
+    // Reset form nhập hộ gia đình
+    householdFormContainer.innerHTML = '';
+    addPerson(currentStatsFields); // tạo form mới dựa vào fields
+
+    // Subscribe to households for this stats post (re-subscribe whenever opening a stats post)
+    subscribeHouseholds(currentStatsPostId);
+}
+
+
                 };
             });
         });
 
         // Logic for Stats Entry Page
-        function addPerson(person = {}) {
-            const personDiv = document.createElement('div');
-            personDiv.classList.add('item-card');
-            personDiv.innerHTML = `
-                <input type="text" class="person-name-input" placeholder="Tên" value="${person.name || ''}" required>
-                <input type="text" class="person-phone-input" placeholder="Số điện thoại" value="${person.phone || ''}">
-                <input type="text" class="person-relationship-input" placeholder="Mối quan hệ" value="${person.relationship || ''}">
-                <button class="remove-item-btn">Xóa người</button>
+      function addPerson(fields, person = {}) {
+    const div = document.createElement('div');
+    div.classList.add('item-card');
+
+    fields.forEach(fieldName => {
+        const val = person[fieldName] || '';
+        div.innerHTML += `
+            <input type="text" class="field-input" data-field="${fieldName}" placeholder="${fieldName}" value="${val}">
+        `;
+    });
+
+    div.innerHTML += `<button class="remove-item-btn">Xóa người</button>`;
+    div.querySelector('.remove-item-btn').onclick = () => div.remove();
+
+    householdFormContainer.appendChild(div);
+}
+
+let unsubscribeHouseholds = null; // global để huỷ subscription cũ nếu cần
+
+function subscribeHouseholds(postId) {
+    // Huỷ subscription cũ nếu có
+    if (typeof unsubscribeHouseholds === 'function') {
+        unsubscribeHouseholds();
+        unsubscribeHouseholds = null;
+    }
+
+    if (!postId) {
+        householdList.innerHTML = '';
+        return;
+    }
+
+    const collRef = collection(db, `/artifacts/${appId}/public/data/news/${postId}/households`);
+    const q = query(collRef);
+
+    unsubscribeHouseholds = onSnapshot(q, (querySnapshot) => {
+        householdList.innerHTML = '';
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const listDiv = document.createElement('div');
+            listDiv.classList.add('member-item');
+
+            let memberInfo = '';
+            (data.members || []).forEach(member => {
+                for (const key in member) {
+                    memberInfo += `<p><strong>${key}:</strong> ${member[key]}</p>`;
+                }
+                memberInfo += `<hr>`;
+            });
+
+            listDiv.innerHTML = `
+                <p class="text-sm text-gray-500">Được khai báo bởi: ${data.declaredBy} lúc ${data.declaredAt.toDate().toLocaleString('vi-VN')}</p>
+                ${memberInfo}
             `;
-            householdFormContainer.appendChild(personDiv);
-            personDiv.querySelector('.remove-item-btn').onclick = () => personDiv.remove();
-        }
+            householdList.appendChild(listDiv);
+        });
+    }, (err) => {
+        console.error("Lỗi khi lắng nghe households:", err);
+    });
+}
 
-        addPersonBtn.onclick = () => addPerson();
+        addPersonBtn.onclick = () => addPerson(currentStatsFields);
 
-        saveHouseholdBtn.onclick = async function() {
-            const user = auth.currentUser;
-            if (!user || !currentStatsPostId) return;
 
-            const householdData = Array.from(document.querySelectorAll('.item-card')).map(el => ({
-                name: el.querySelector('.person-name-input').value,
-                phone: el.querySelector('.person-phone-input').value || '',
-                relationship: el.querySelector('.person-relationship-input').value || '',
-            }));
+ saveHouseholdBtn.onclick = async function() {
+    if (!currentStatsPostId) {
+        alert("Không có bài thống kê nào đang được chọn.");
+        return;
+    }
 
-            try {
-                await addDoc(collection(db, `/artifacts/${appId}/public/data/news/${currentStatsPostId}/households`), {
-                    members: householdData,
-                    declaredBy: user.email,
-                    declaredAt: new Date()
-                });
-                console.log("Dữ liệu hộ gia đình đã được lưu thành công!");
-                // Clear the form after saving
-                householdFormContainer.innerHTML = '';
-                addPerson(); // Add a new blank entry
-            } catch (e) {
-                console.error("Lỗi khi lưu dữ liệu hộ gia đình: ", e);
+    if (!currentStatsFields || currentStatsFields.length === 0) {
+        alert("Bài thống kê này chưa có trường nào, không thể nhập liệu.");
+        return;
+    }
+
+    const householdData = Array.from(householdFormContainer.querySelectorAll('.item-card')).map(el => {
+        const member = {};
+        el.querySelectorAll('.field-input').forEach(input => {
+            member[input.dataset.field] = input.value.trim();
+        });
+        return member;
+    });
+
+    // Kiểm tra có dữ liệu thực sự
+    const hasAnyData = householdData.some(member => 
+        Object.values(member).some(v => v !== "")
+    );
+    if (!hasAnyData) {
+        alert("Vui lòng nhập ít nhất một thông tin trước khi lưu!");
+        return;
+    }
+
+    const user = auth.currentUser;
+    const declaredBy = user && user.email ? user.email : "anonymous";
+
+    try {
+        await addDoc(
+            collection(db, `/artifacts/${appId}/public/data/news/${currentStatsPostId}/households`),
+            {
+                members: householdData,
+                declaredBy,
+                declaredAt: new Date()
             }
-        };
+        );
+        console.log("✅ Lưu thành công");
+        householdFormContainer.innerHTML = '';
+        addPerson(currentStatsFields);
+    } catch (e) {
+        console.error("❌ Lỗi khi lưu dữ liệu hộ gia đình:", e);
+        alert("Có lỗi khi lưu dữ liệu, thử lại sau.");
+    }
+};
+
+
 
         // Listen for household data changes on the current stats post
         onSnapshot(query(collection(db, `/artifacts/${appId}/public/data/news/${currentStatsPostId || 'placeholder'}/households`)), (querySnapshot) => {
@@ -913,9 +1033,15 @@ deleteBtn.onclick = async (e) => {
                 const listDiv = document.createElement('div');
                 listDiv.classList.add('member-item');
                 let memberInfo = ``;
-                data.members.forEach(member => {
-                    memberInfo += `<p><strong>${member.name}</strong> - ${member.relationship} ${member.phone ? `(${member.phone})` : ''}</p>`;
-                });
+   data.members.forEach(member => {
+    for (const key in member) {
+        memberInfo += `<p><strong>${key}:</strong> ${member[key]}</p>`;
+    }
+    memberInfo += `<hr>`;
+});
+
+
+
                 listDiv.innerHTML = `
                     <p class="text-sm text-gray-500">Được khai báo bởi: ${data.declaredBy} lúc ${data.declaredAt.toDate().toLocaleString('vi-VN')}</p>
                     ${memberInfo}
@@ -939,8 +1065,7 @@ deleteBtn.onclick = async (e) => {
             }
         });
         
-        // Initial state
-        addPerson();
+       
     </script>
 </body>
 </html>
