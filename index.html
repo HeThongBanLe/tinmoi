@@ -363,6 +363,16 @@
                 width: 200px;
             }
         }
+	#registrantNameInput { display: block !important; background: yellow; }
+	 #statsEntryPage {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+
+
+
+
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -401,22 +411,37 @@
         </div>
     </div>
 
-    <div id="statsEntryPage" class="page">
-        <button class="back-btn" id="backFromStatsBtn">Quay lại</button>
-        <div class="form-container">
-            <h2 id="statsEntryPageTitle" class="text-2xl font-bold mb-4">Nhập liệu thống kê hộ gia đình</h2>
-            <div class="text-gray-600 mb-4">
-                <p>Để thống kê, vui lòng nhập thông tin của các thành viên trong gia đình. Số điện thoại chỉ cần nhập cho người khai báo chính (chủ hộ).</p>
-            </div>
-            <div id="householdFormContainer" class="flex flex-col gap-4"></div>
-            <button class="add-item-btn" id="addPersonBtn">Thêm người</button>
-            <button id="saveHouseholdBtn" class="bg-green-500 hover:bg-green-600">Lưu thông tin</button>
-            <div id="savedHouseholdData" class="mt-8">
-                <h3 class="text-lg font-bold mb-4">Danh sách đã nhập:</h3>
-                <div id="householdList" class="flex flex-col gap-4"></div>
-            </div>
-        </div>
+<div id="statsEntryPage" class="page">
+  <button class="back-btn" id="backFromStatsBtn">Quay lại</button>
+  <div class="form-container" style="display:flex; flex-direction:column; gap:1rem;">
+    <h2 id="statsEntryPageTitle" class="text-2xl font-bold mb-4">
+      Nhập liệu thống kê hộ gia đình
+    </h2>
+
+    <!-- Ô cố định -->
+    <div class="fixed-fields item-card mb-4">
+      <label for="registrantNameInput" class="block mb-2 font-semibold">Nhập đầy đủ thông tin người đăng ký</label>
+      <input type="text" id="registrantNameInput" class="w-full p-2 border rounded" placeholder="Nhập tên người đăng ký">
     </div>
+     <div class="text-gray-600 mb-4">
+      <p>Để thống kê, vui lòng nhập đầy đủ thông tin bên dưới.</p>
+    </div>
+
+
+
+    <!-- Chỗ chứa form động -->
+    <div id="householdFormContainer" class="flex flex-col gap-4"></div>
+
+    <button class="add-item-btn" id="addPersonBtn">Thêm người</button>
+    <button id="saveHouseholdBtn" class="bg-green-500 hover:bg-green-600">Lưu thông tin</button>
+
+    <div id="savedHouseholdData" class="mt-8">
+      <h3 class="text-lg font-bold mb-4">Danh sách đã nhập:</h3>
+      <div id="householdList" class="flex flex-col gap-4"></div>
+    </div>
+  </div>
+</div>
+
 
     <!-- Trang Cấu hình -->
     <div id="settingsPage" class="page">
@@ -746,6 +771,7 @@ submitNewsBtn.onclick = async function() {
     newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
     chaptersContainer.innerHTML = "";
     showPage('newsPage');
+    
     addField(); // 👈 thống kê thì thêm trường
     addChapterBtn.style.display = 'none';
     addFieldBtn.style.display = 'inline-block';
@@ -902,11 +928,13 @@ else if (news.type === 'stats') {
     statsEntryPageTitle.textContent = `Thống kê cho: ${news.title}`;
     currentStatsFields = news.fields || []; // lấy danh sách fields do người tạo định nghĩa
 
-    // Hiện trang nhập liệu
     showPage('statsEntryPage');
 
+
+
+
     // Reset form nhập hộ gia đình
-    householdFormContainer.innerHTML = '';
+    //householdFormContainer.innerHTML = '';
     addPerson(currentStatsFields); // tạo form mới dựa vào fields
 
     // Subscribe to households for this stats post (re-subscribe whenever opening a stats post)
@@ -955,25 +983,28 @@ function subscribeHouseholds(postId) {
 
     unsubscribeHouseholds = onSnapshot(q, (querySnapshot) => {
         householdList.innerHTML = '';
-        querySnapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const listDiv = document.createElement('div');
-            listDiv.classList.add('member-item');
+        // khi lắng nghe households:
+querySnapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    const listDiv = document.createElement('div');
+    listDiv.classList.add('member-item');
 
-            let memberInfo = '';
-            (data.members || []).forEach(member => {
-                for (const key in member) {
-                    memberInfo += `<p><strong>${key}:</strong> ${member[key]}</p>`;
-                }
-                memberInfo += `<hr>`;
-            });
+    let memberInfo = '';
+    (data.members || []).forEach(member => {
+        for (const key in member) {
+            memberInfo += `<p><strong>${key}:</strong> ${member[key]}</p>`;
+        }
+        memberInfo += `<hr>`;
+    });
 
-            listDiv.innerHTML = `
-                <p class="text-sm text-gray-500">Được khai báo bởi: ${data.declaredBy} lúc ${data.declaredAt.toDate().toLocaleString('vi-VN')}</p>
-                ${memberInfo}
-            `;
-            householdList.appendChild(listDiv);
-        });
+    listDiv.innerHTML = `
+      <p><strong>Người đăng ký:</strong> ${data.registrantName || 'Không rõ'}</p>
+      <p class="text-sm text-gray-500">Được khai báo lúc:  ${data.declaredAt?.toDate ? data.declaredAt.toDate().toLocaleString('vi-VN') : data.declaredAt}</p>
+      ${memberInfo}
+    `;
+    householdList.appendChild(listDiv);
+});
+
     }, (err) => {
         console.error("Lỗi khi lắng nghe households:", err);
     });
@@ -992,7 +1023,7 @@ function subscribeHouseholds(postId) {
         alert("Bài thống kê này chưa có trường nào, không thể nhập liệu.");
         return;
     }
-
+    const registrantName = document.getElementById('registrantNameInput').value.trim();
     const householdData = Array.from(householdFormContainer.querySelectorAll('.item-card')).map(el => {
         const member = {};
         el.querySelectorAll('.field-input').forEach(input => {
@@ -1016,7 +1047,8 @@ function subscribeHouseholds(postId) {
     try {
         await addDoc(
             collection(db, `/artifacts/${appId}/public/data/news/${currentStatsPostId}/households`),
-            {
+            {	
+		registrantName, 
                 members: householdData,
                 declaredBy,
                 declaredAt: new Date()
@@ -1051,9 +1083,11 @@ function subscribeHouseholds(postId) {
 
 
                 listDiv.innerHTML = `
-                    <p class="text-sm text-gray-500">Được khai báo bởi: ${data.declaredBy} lúc ${data.declaredAt.toDate().toLocaleString('vi-VN')}</p>
-                    ${memberInfo}
-                `;
+  		<p><strong>Người đăng ký:</strong> ${data.registrantName || 'Không rõ'}</p>
+  		<p class="text-sm text-gray-500">Được khai báo bởi:  ${data.declaredAt.toDate().toLocaleString('vi-VN')}</p>
+  		${memberInfo}
+		`;
+
                 householdList.appendChild(listDiv);
             });
         });
