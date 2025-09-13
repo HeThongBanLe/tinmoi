@@ -365,10 +365,29 @@
         }
 	#registrantNameInput { display: block !important; background: yellow; }
 	 #statsEntryPage {
-  flex-direction: column;
-  align-items: flex-start;
-}
+  	flex-direction: column;
+ 	 align-items: flex-start;
+	}
 
+.scroll-fixed-30cm {
+  height: 30cm;
+  max-height: 30cm;
+
+  /* fallback tương ứng 30cm ≈ 1134px */
+  height: 1134px;
+  max-height: 1134px;
+
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+}
+.duplicate-highlight {
+  background-color: #ffe6e6 !important;
+  border: 2px solid #ff4d4d !important;
+  border-radius: 6px;
+  padding: 4px;
+}
 
 
 
@@ -437,7 +456,9 @@
 
     <div id="savedHouseholdData" class="mt-8">
       <h3 class="text-lg font-bold mb-4">Danh sách đã nhập:</h3>
-      <div id="householdList" class="flex flex-col gap-4"></div>
+	 <!-- 👇 Ô tìm kiếm -->
+      <input type="text" id="householdSearch" class="w-full p-2 border rounded mb-4" placeholder="Tìm kiếm...">
+      <div id="householdList" class="flex flex-col gap-4 scroll-fixed-30cm"></div>
     </div>
   </div>
 </div>
@@ -581,6 +602,7 @@
         const addPersonBtn = document.getElementById("addPersonBtn");
         const saveHouseholdBtn = document.getElementById("saveHouseholdBtn");
         const householdList = document.getElementById("householdList");
+	const householdSearch = document.getElementById("householdSearch");
 
         const backToMainBtn = document.getElementById("backToMainBtn");
         const backFromSettingsBtn = document.getElementById("backFromSettingsBtn");
@@ -1107,7 +1129,31 @@ querySnapshot.forEach(docSnap => {
             }
         });
         
-       
     </script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const householdSearch = document.getElementById("householdSearch");
+  const householdList = document.getElementById("householdList");
+
+  if (!householdSearch || !householdList) return;
+
+  householdSearch.addEventListener("input", function() {
+    const query = this.value.toLowerCase().trim();
+    const items = householdList.querySelectorAll(".member-item");
+
+    items.forEach(item => {
+      const text = item.textContent.replace(/\s+/g, " ").toLowerCase();
+      if (text.includes(query)) {
+        item.style.display = "block"; // hiển thị
+      } else {
+        item.style.display = "none";  // ẩn đi
+      }
+    });
+  });
+});
+
+</script>
+
+
 </body>
 </html>
