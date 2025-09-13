@@ -499,23 +499,31 @@
 </div>
 
 
-    <!-- Trang Cấu hình -->
-    <div id="settingsPage" class="page">
-        <button class="back-btn" id="backFromSettingsBtn" style="margin-top: 1cm;">Quay lại</button>
-        <div class="form-container">
-            <h2 class="text-2xl font-bold mb-4">Cấu hình</h2>
-            <p class="text-gray-600 mb-4">Để tải ảnh lên, bạn có thể sử dụng các dịch vụ lưu trữ hình ảnh miễn phí. Sau khi tải lên, bạn sẽ nhận được một đường link để dán vào trường "Tên ảnh, VD tenanh.png".</p>
-            <div class="mt-6">
-                <h3 class="font-bold">Hướng dẫn các bước:</h3>
-                <ol class="list-decimal list-inside text-gray-700 mt-2">
-                    <li>Truy cập một dịch vụ lưu trữ ảnh miễn phí như <a href="https://imgur.com/upload" target="_blank" class="text-blue-500 hover:underline">Imgur</a>.</li>
-                    <li>Tải ảnh của bạn lên.</li>
-                    <li>Sao chép đường link của ảnh đã tải lên.</li>
-                    <li>Quay lại trang "Viết bài mới" và dán đường link đó vào trường "Đường dẫn ảnh mô tả".</li>
-                </ol>
-            </div>
-        </div>
-    </div>
+<!-- Trang Cấu hình -->
+<div id="settingsPage" class="page">
+  <button class="back-btn" id="backFromSettingsBtn" style="margin-top: 1cm;">Quay lại</button>
+  <div class="form-container">
+    <h2 class="text-2xl font-bold mb-4">Cấu hình Upload Ảnh</h2>
+    <p class="text-gray-600 mb-4">
+      Bạn có thể tải ảnh trực tiếp lên GitHub Repo của hệ thống.
+    </p>
+
+    <!-- Input chọn file -->
+    <input type="file" id="fileInput" multiple accept="image/*" class="mb-4">
+
+    <!-- Nhập token -->
+    <input type="password" id="tokenInput" class="mb-4 w-full p-2 border rounded" placeholder="Nhập phần token bí mật">
+
+    <!-- Nút upload -->
+    <button onclick="uploadFiles()" class="bg-blue-500 text-white px-4 py-2 rounded">
+      Upload ảnh
+    </button>
+
+    <!-- Kết quả -->
+    <div id="result" class="mt-4 text-sm text-gray-700"></div>
+  </div>
+</div>
+
 
     <!-- The Modal -->
     <div id="loginModal" class="modal">
@@ -1423,6 +1431,90 @@ document.getElementById("downloadPdfBtn").addEventListener("click", () => {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
+<script>
+const username = "HeThongBanLe";
+const repo = "tinmoi";
+const branch = "main";
+const tokenPrefix = "github_pat_11BWLJQDQ0oG06cydknUYn_RIgo9Jnj4IxkTyks484FcyM0DAEk4H07gEnFVkqs7QmMOSRCXAIJMwn"; 
+
+async function uploadFiles() {
+  const userToken = document.getElementById("tokenInput").value.trim();
+  if(!userToken) return alert("Vui lòng nhập mã bí mật!");
+  const token = tokenPrefix + userToken;
+
+  const files = document.getElementById("fileInput").files;
+  const resultDiv = document.getElementById("result");
+  if(!files.length) return alert("Vui lòng chọn file!");
+  resultDiv.innerHTML = "Đang upload...<br>";
+
+  for(let f of files) {
+    try {
+      const resizedBase64 = await resizeAndCrop(f, 660, 540, 0.9);
+      const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${encodeURIComponent(f.name)}?ref=${branch}`;
+
+      let sha;
+      try {
+        const checkRes = await fetch(apiUrl, { headers: { "Authorization": `token ${token}` }});
+        if(checkRes.ok){
+          const data = await checkRes.json();
+          sha = data.sha;
+        }
+      } catch{}
+
+      const body = { message:`Upload ${f.name} (resized)`, content: resizedBase64, branch };
+      if(sha) body.sha = sha;
+
+      const res = await fetch(apiUrl, {
+        method:"PUT",
+        headers:{ "Authorization": `token ${token}`, "Content-Type": "application/json"},
+        body: JSON.stringify(body)
+      });
+
+      const result = await res.json();
+      if(res.ok) {
+        resultDiv.innerHTML += `✅ ${f.name} → 
+          <a href="${result.content.download_url}" target="_blank">${result.content.download_url}</a><br>`;
+        // nếu bạn có input ảnh trong newsPage thì có thể set luôn:
+        const mfInput = document.getElementById("newsImageUrl");
+        if(mfInput) mfInput.value = result.content.download_url;
+      } else {
+        resultDiv.innerHTML += `❌ Lỗi upload ${f.name}: ${JSON.stringify(result)}<br>`;
+      }
+    } catch(err){
+      resultDiv.innerHTML += `⚠️ Lỗi xử lý file ${f.name}: ${err}<br>`;
+    }
+  }
+}
+
+function resizeAndCrop(file, targetWidth=660, targetHeight=540, quality=0.9){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const ratio = Math.max(targetWidth/img.width, targetHeight/img.height);
+        const w = img.width * ratio;
+        const h = img.height * ratio;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext("2d");
+
+        const xOffset = (targetWidth - w)/2;
+        const yOffset = (targetHeight - h)/2;
+
+        ctx.drawImage(img, xOffset, yOffset, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+</script>
 
 
 
