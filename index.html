@@ -476,13 +476,13 @@
 	<button id="exportHouseholdsBtn" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">
 	 Xem dạng bảng
 	</button>
-	<button id="printHouseholdsBtn"class="bg-green-500 text-white px-4 py-2 rounded mb-4">
+	<button id="printHouseholdsBtn"style="display:none;" class="bg-green-500 text-white px-4 py-2 rounded mb-4">
   	In danh sách
 	</button>
-	<button id="exportExcelBtn" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
+	<button id="exportExcelBtn"style="display:none;" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
  	 Xuất Excel
 	</button>
-	<button id="downloadPdfBtn" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
+	<button id="downloadPdfBtn"style="display:none;" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
  	 Xuất PDF
 	</button>
 
@@ -657,7 +657,22 @@
 	const exportExcelBtn = document.getElementById("exportExcelBtn");
 	const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
-	
+	// Ẩn mặc định an toàn (nếu HTML chưa để display:none)
+[ printHouseholdsBtn, exportExcelBtn, downloadPdfBtn].forEach(b => {
+  if (b) b.style.display = "none";
+});
+
+// helper để show/ hide
+function setExportButtonsVisible(visible) {
+  const v = visible ? "inline-block" : "none";
+  
+  if (printHouseholdsBtn) printHouseholdsBtn.style.display = v;
+  if (exportExcelBtn) exportExcelBtn.style.display = v;
+  if (downloadPdfBtn) downloadPdfBtn.style.display = v;
+}
+
+
+
         // Close buttons for modals
         document.querySelectorAll(".close-button").forEach(btn => {
             btn.onclick = function() {
@@ -684,6 +699,7 @@
                 await signInWithEmailAndPassword(auth, email, password);
                 authStatus.textContent = "Đăng nhập thành công!";
                 loginModal.style.display = "none";
+		setExportButtonsVisible(true);
             } catch (error) {
                 console.error("Lỗi đăng nhập:", error);
                 authStatus.textContent = "Lỗi: " + error.message;
@@ -851,39 +867,41 @@ submitNewsBtn.onclick = async function() {
         backFromNewsBtn.onclick = () => showPage('main');
         backFromStatsBtn.onclick = () => showPage('main');
 
-        // Auth state listener
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userInfo.textContent = `Xin chào, ${user.email}`;
-                userInfo.style.display = "block";
-                loginBtn.style.display = "none";
-                logoutBtn.style.display = "block";
-                changePasswordBtn.style.display = "block";
-                newsBtn.style.display = "block";
-                statsBtn.style.display = "block";
-                settingsBtn.style.display = "block";
-		newBtn.style.display = "block";
-	    
 
-                if (user.email === 'admin@myapp.com') {
-                    createAccountBtn.style.display = "block";
-                } else {
-                    createAccountBtn.style.display = "none";
-                }
-            } else {
-                userInfo.style.display = "none";
-                loginBtn.style.display = "block";
-                logoutBtn.style.display = "none";
-                changePasswordBtn.style.display = "none";
-                createAccountBtn.style.display = "none";
-                settingsBtn.style.display = "none";
-                statsBtn.style.display = "none";
-		newBtn.style.display = "none";
-                passwordInput.value = "";
-        	
-		
-            }
-        });
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userInfo.textContent = `Xin chào, ${user.email}`;
+    userInfo.style.display = "block";
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "block";
+    changePasswordBtn.style.display = "block";
+    newsBtn.style.display = "block";
+    statsBtn.style.display = "block";
+    settingsBtn.style.display = "block";
+   
+
+    // hiện các nút export
+    setExportButtonsVisible(true);
+
+    if (user.email === 'admin@myapp.com') {
+      createAccountBtn.style.display = "block";
+    } else {
+      createAccountBtn.style.display = "none";
+    }
+  } else {
+    userInfo.style.display = "none";
+    loginBtn.style.display = "block";
+    logoutBtn.style.display = "none";
+    changePasswordBtn.style.display = "none";
+    createAccountBtn.style.display = "none";
+    settingsBtn.style.display = "none";
+    statsBtn.style.display = "none";
+    passwordInput.value = "";
+
+    // ẩn các nút export
+    setExportButtonsVisible(false);
+  }
+});
 
 
         // Listen for news and stats articles
@@ -1254,6 +1272,7 @@ households.forEach((hh, index) => {
     });
 
     if (bgColor) {
+
       tr.style.backgroundColor = bgColor;
     }
 
