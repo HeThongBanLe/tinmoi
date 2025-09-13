@@ -479,6 +479,9 @@
 	<button id="printHouseholdsBtn" class="bg-green-500 text-white px-4 py-2 rounded mb-4">
   	In danh sách
 	</button>
+	<button id="downloadPdfBtn" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
+ 	 Xuất PDF
+	</button>
 	<h3 class="text-lg font-bold mb-6 text-green-600">Danh sách đã đăng ký:</h3>
 	<div id="householdList" class="flex flex-col gap-4 scroll-fixed-30cm"></div>
 	<!-- Khu vực hiển thị Excel -->
@@ -1286,9 +1289,45 @@ printWindow.document.write(`
   printWindow.print();
 });
 
+</script>
+<script>
+document.getElementById("downloadPdfBtn").addEventListener("click", async () => {
+  const container = document.getElementById("exportTableWrapper");
+
+  if (!container || !container.innerHTML.trim()) {
+    alert("⚠️ Chưa có dữ liệu để xuất PDF. Hãy bấm 'Xem dạng bảng' trước.");
+    return;
+  }
+
+  // chụp lại bảng thành ảnh
+  const canvas = await html2canvas(container, { scale: 2 });
+  const imgData = canvas.toDataURL("image/png");
+
+  // tạo file PDF khổ ngang
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("l", "mm", "a3");
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // 👉 margin trái/phải/trên/dưới (mm)
+  const margin = 10;
+
+  // Tính kích thước ảnh để vừa trong khung trừ lề
+  const imgWidth = pageWidth - margin * 2;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  pdf.addImage(imgData, "PNG", margin, margin, imgWidth, imgHeight);
+  pdf.save("danhsach-thongke.pdf");
+});
+
+
+
 
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 
 </body>
