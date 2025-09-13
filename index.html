@@ -476,12 +476,17 @@
 	<button id="exportHouseholdsBtn" class="bg-blue-500 text-white px-4 py-2 rounded mb-4">
 	 Xem dạng bảng
 	</button>
-	<button id="printHouseholdsBtn" class="bg-green-500 text-white px-4 py-2 rounded mb-4">
+	<button id="printHouseholdsBtn"class="bg-green-500 text-white px-4 py-2 rounded mb-4">
   	In danh sách
 	</button>
 	<button id="exportExcelBtn" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
  	 Xuất Excel
 	</button>
+	<button id="downloadPdfBtn" class="bg-red-500 text-white px-4 py-2 rounded mb-4">
+ 	 Xuất PDF
+	</button>
+
+
 	<h3 class="text-lg font-bold mb-6 text-green-600">Danh sách đã đăng ký:</h3>
 	<div id="householdList" class="flex flex-col gap-4 scroll-fixed-30cm"></div>
 	<!-- Khu vực hiển thị Excel -->
@@ -647,6 +652,12 @@
         const changePasswordModal = document.getElementById("changePasswordModal");
         const createAccountModal = document.getElementById("createAccountModal");
         
+	const exportHouseholdsBtn = document.getElementById("exportHouseholdsBtn");
+	const printHouseholdsBtn = document.getElementById("printHouseholdsBtn");
+	const exportExcelBtn = document.getElementById("exportExcelBtn");
+	const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+
+	
         // Close buttons for modals
         document.querySelectorAll(".close-button").forEach(btn => {
             btn.onclick = function() {
@@ -852,6 +863,8 @@ submitNewsBtn.onclick = async function() {
                 statsBtn.style.display = "block";
                 settingsBtn.style.display = "block";
 		newBtn.style.display = "block";
+	    
+
                 if (user.email === 'admin@myapp.com') {
                     createAccountBtn.style.display = "block";
                 } else {
@@ -867,8 +880,11 @@ submitNewsBtn.onclick = async function() {
                 statsBtn.style.display = "none";
 		newBtn.style.display = "none";
                 passwordInput.value = "";
+        	
+		
             }
         });
+
 
         // Listen for news and stats articles
         onSnapshot(query(collection(db, `/artifacts/${appId}/public/data/news`)), (querySnapshot) => {
@@ -1290,6 +1306,8 @@ printWindow.document.write(`
 });
 
 </script>
+
+
 <script>
 document.getElementById("exportExcelBtn").addEventListener("click", () => {
   const table = document.querySelector("#exportTableContainer table");
@@ -1298,13 +1316,93 @@ document.getElementById("exportExcelBtn").addEventListener("click", () => {
     return;
   }
 
-  // chuyển HTML table thành sheet Excel
-  const wb = XLSX.utils.table_to_book(table, { sheet: "Thống kê" });
+  // 👉 lấy tiêu đề động từ giao diện
+  const titleText = document.getElementById("statsEntryPageTitle")?.textContent || "Danh sách thống kê";
+
+  // lấy dữ liệu bảng HTML thành mảng (array of arrays)
+  const data = XLSX.utils.sheet_to_json(
+    XLSX.utils.table_to_sheet(table),
+    { header: 1 } // lấy raw mảng, không object
+  );
+
+  // chèn tiêu đề vào dòng đầu
+  data.unshift([titleText]);
+
+  // tạo sheet từ mảng dữ liệu
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // tạo workbook và thêm sheet
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Thống kê");
+
+  // lưu file
   XLSX.writeFile(wb, "danhsach-thongke.xlsx");
 });
 </script>
 
+
+
+<script>
+document.getElementById("downloadPdfBtn").addEventListener("click", () => {
+  const table = document.querySelector("#exportTableContainer table");
+  if (!table) {
+    alert("⚠️ Chưa có dữ liệu để xuất PDF. Hãy bấm 'Xem dạng bảng' trước.");
+    return;
+  }
+
+  // lấy dữ liệu bảng HTML
+  const rows = [];
+  table.querySelectorAll("tr").forEach(tr => {
+    const row = [];
+    tr.querySelectorAll("th, td").forEach(td => {
+      row.push(td.innerText.trim());
+    });
+    rows.push(row);
+  });
+
+  // 👉 lấy tiêu đề động giống hàm in
+  const titleText = document.getElementById("statsEntryPageTitle")?.textContent || "Danh sách thống kê";
+
+  const docDefinition = {
+    pageSize: "A3",
+    pageOrientation: "landscape",
+    content: [
+      { text: titleText, style: "title", alignment: "center" }, // 👈 tiêu đề động
+      { text: "Ngày xuất: " + new Date().toLocaleDateString("vi-VN"), alignment: "right", margin: [0, 0, 0, 10] },
+      {
+        table: {
+          headerRows: 1,
+          widths: Array(rows[0].length).fill("auto"),
+          body: rows
+        },
+        layout: 'grid'
+      }
+    ],
+    styles: {
+      title: {
+        fontSize: 18,
+        bold: true,
+        margin: [0, 0, 0, 10]
+      }
+    },
+    defaultStyle: {
+      font: "Roboto",
+      fontSize: 11
+    }
+  };
+
+  pdfMake.createPdf(docDefinition).download("danhsach-thongke.pdf");
+});
+
+
+</script>
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
 
 
 
