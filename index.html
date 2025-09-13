@@ -521,6 +521,16 @@
 
     <!-- Kết quả -->
     <div id="result" class="mt-4 text-sm text-gray-700"></div>
+	<!-- trong settingsPage: thêm input tên file + Read + List -->
+
+<div class="flex gap-2 mt-2">
+
+  <button onclick="listFiles()" class="bg-gray-600 text-white px-4 py-2 rounded">List files (root)</button>
+</div>
+<div id="readResult" class="mt-4 p-2 border rounded bg-gray-50 text-sm"></div>
+
+
+
   </div>
 </div>
 
@@ -1514,6 +1524,44 @@ function resizeAndCrop(file, targetWidth=660, targetHeight=540, quality=0.9){
     reader.readAsDataURL(file);
   });
 }
+
+
+
+async function listFiles() {
+  const resultDiv = document.getElementById("readResult");
+  resultDiv.innerHTML = "Đang liệt kê file ở root...";
+  const userToken = document.getElementById("tokenInput")?.value.trim();
+  if(!userToken) { alert("Nhập token ở ô Upload trước."); resultDiv.innerHTML = ""; return; }
+  const token = tokenPrefix + userToken;
+
+  const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/?ref=${branch}`;
+  try {
+    const res = await fetch(apiUrl, { headers: { "Authorization": `token ${token}` }});
+    const textBody = await res.text();
+    if (!res.ok) {
+      resultDiv.innerHTML = `<strong>❌ Lỗi HTTP ${res.status} ${res.statusText}</strong><br><pre>${escapeHtml(textBody)}</pre>`;
+      return;
+    }
+    const items = JSON.parse(textBody);
+    if (!Array.isArray(items)) {
+      resultDiv.innerHTML = `❌ Response unexpected:<br><pre>${escapeHtml(textBody)}</pre>`;
+      return;
+    }
+    // show list
+    let html = "<strong>Files at repo root:</strong><ul>";
+    items.forEach(it => html += `<li>${escapeHtml(it.name)} ${it.type === 'dir' ? '(dir)' : ''}</li>`);
+    html += "</ul>";
+    resultDiv.innerHTML = html;
+  } catch (err) {
+    resultDiv.innerHTML = `⚠️ Lỗi network / xử lý: ${escapeHtml(String(err))}`;
+    console.error(err);
+  }
+}
+
+// small helper to escape HTML
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+
 </script>
 
 
