@@ -516,7 +516,7 @@
 
     <!-- Nút upload -->
     <button onclick="uploadFiles()" class="bg-blue-500 text-white px-4 py-2 rounded">
-      Upload ảnh
+      Tải ảnh lên Github
     </button>
 
     <!-- Kết quả -->
@@ -524,9 +524,12 @@
 	<!-- trong settingsPage: thêm input tên file + Read + List -->
 
 <div class="flex gap-2 mt-2">
-
-  <button onclick="listFiles()" class="bg-gray-600 text-white px-4 py-2 rounded">List files (root)</button>
+  <button onclick="listFiles()" class="bg-gray-600 text-white px-4 py-2 rounded">Đọc tệp đang có trên Github</button>
 </div>
+<button onclick="deleteSelectedFiles()" class="bg-red-600 text-white px-4 py-2 rounded mt-2">
+  Xóa ảnh trên Github
+</button>
+
 <div id="readResult" class="mt-4 p-2 border rounded bg-gray-50 text-sm"></div>
 
 
@@ -1526,7 +1529,6 @@ function resizeAndCrop(file, targetWidth=660, targetHeight=540, quality=0.9){
 }
 
 
-
 async function listFiles() {
   const resultDiv = document.getElementById("readResult");
   resultDiv.innerHTML = "Đang liệt kê file ở root...";
@@ -1547,9 +1549,18 @@ async function listFiles() {
       resultDiv.innerHTML = `❌ Response unexpected:<br><pre>${escapeHtml(textBody)}</pre>`;
       return;
     }
-    // show list
+    // show list with checkboxes
     let html = "<strong>Files at repo root:</strong><ul>";
-    items.forEach(it => html += `<li>${escapeHtml(it.name)} ${it.type === 'dir' ? '(dir)' : ''}</li>`);
+    items.forEach(it => {
+      if (it.type === "file") {
+        const disabled = it.name.toLowerCase().startsWith("index") ? "disabled" : "";
+html += `
+  <li class="grid grid-cols-[30px_1fr] items-center mb-1">
+    <input type="checkbox" class="fileCheckbox" value="${escapeHtml(it.name)}" ${disabled}>
+    <span>${escapeHtml(it.name)}</span>
+  </li>`;
+      }
+    });
     html += "</ul>";
     resultDiv.innerHTML = html;
   } catch (err) {
@@ -1558,10 +1569,55 @@ async function listFiles() {
   }
 }
 
-// small helper to escape HTML
-function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function deleteSelectedFiles() {
+  const checkboxes = document.querySelectorAll(".fileCheckbox:checked");
+  if (checkboxes.length === 0) { alert("Chưa chọn file nào để xóa!"); return; }
+
+  const userToken = document.getElementById("tokenInput")?.value.trim();
+  if(!userToken) { alert("Nhập token trước!"); return; }
+  const token = tokenPrefix + userToken;
+  const resultDiv = document.getElementById("result");
+
+  for (const cb of checkboxes) {
+    const fileName = cb.value;
+    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${encodeURIComponent(fileName)}?ref=${branch}`;
+    try {
+      // lấy sha
+      const res = await fetch(apiUrl, { headers: { "Authorization": `token ${token}` }});
+      if (!res.ok) {
+        resultDiv.innerHTML += `❌ File ${fileName} không tồn tại!<br>`;
+        continue;
+      }
+      const data = await res.json();
+      const sha = data.sha;
+
+      // xóa
+      const delRes = await fetch(apiUrl, {
+        method: "DELETE",
+        headers: { "Authorization": `token ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: `Delete ${fileName}`, sha, branch })
+      });
+      const result = await delRes.json();
+      if (delRes.ok) {
+        resultDiv.innerHTML += `✅ Đã xóa ${fileName}<br>`;
+      } else {
+        resultDiv.innerHTML += `❌ Lỗi xóa ${fileName}: ${JSON.stringify(result)}<br>`;
+      }
+    } catch(err) {
+      resultDiv.innerHTML += `⚠️ Lỗi khi xóa ${fileName}: ${err}<br>`;
+    }
+  }
+}
 
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 </script>
 
 
