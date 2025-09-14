@@ -406,12 +406,26 @@
   }
 }
 .modal-content {
-  width: 60%;          /* to ra gần full màn hình */
-  max-width: 600px;    /* rộng tối đa 900px */
+  width: 80%;          /* to ra gần full màn hình */
+  max-width: 800px;    /* rộng tối đa 900px */
   max-height: 90vh;    /* chiếm tối đa 90% chiều cao màn hình */
   overflow-y: auto;    /* có scroll nếu nội dung dài */
 }
-
+.poll-popup {
+  max-width: 90%;       /* gói gọn trong màn hình */
+  width: 400px;         /* hoặc để auto nếu muốn responsive */
+  box-sizing: border-box;
+  word-wrap: break-word; /* chữ dài sẽ xuống dòng */
+  overflow-wrap: break-word;
+  overflow-x: hidden;    /* ẩn tràn ngang */
+}
+.poll-popup input,
+.poll-popup label,
+.poll-popup p {
+  max-width: 100%;       /* không vượt quá popup */
+  box-sizing: border-box;
+}
+		
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -1942,5 +1956,6 @@ function escapeHtml(s) {
 
 </body>
 </html>
+
 
 
