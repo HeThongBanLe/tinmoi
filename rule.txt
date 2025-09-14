@@ -15,4 +15,9 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
   }
+
 }
+
+
+
+rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { // Cho phép tất cả người dùng đọc tin tức và bài thống kê // Cho phép người dùng đã đăng nhập tạo và cập nhật bài viết match /artifacts/{appId}/public/data/news/{newsId} { allow read: if true; allow write: if request.auth != null; } // Cho phép tất cả người dùng đọc dữ liệu thống kê hộ gia đình // Cho phép người dùng đã đăng nhập ghi dữ liệu này match /artifacts/{appId}/public/data/news/{newsId}/households/{householdId} { allow read, write: if true; } match /artifacts/{appId}/public/data/news/{newsId}/votes/{voterId} { allow read: if true; // ai cũng xem kết quả allow create: if true; // ai cũng được gửi vote allow update, delete: if false; } } }
