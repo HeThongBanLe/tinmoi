@@ -1305,6 +1305,15 @@ deleteBtn.onclick = async (e) => {
                     await deleteDoc(hDoc.ref);
                 }
             }
+
+      // Nếu là bài bình chọn => xóa votes
+      if (news.type === "poll") {
+        const votesRef = collection(db, "artifacts", appId, "public", "data", "news", news.id, "votes");
+        const votesSnap = await getDocs(votesRef);
+        for (const vDoc of votesSnap.docs) {
+          await deleteDoc(vDoc.ref);
+        }
+      }
             // Xóa document chính
             await deleteDoc(doc(db, `/artifacts/${appId}/public/data/news`, news.id));
             console.log("Bài viết đã bị xóa!");
