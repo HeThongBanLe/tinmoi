@@ -405,7 +405,12 @@
     print-color-adjust: exact;
   }
 }
-
+.modal-content {
+  width: 90%;          /* to ra gần full màn hình */
+  max-width: 900px;    /* rộng tối đa 900px */
+  max-height: 90vh;    /* chiếm tối đa 90% chiều cao màn hình */
+  overflow-y: auto;    /* có scroll nếu nội dung dài */
+}
 
     </style>
 </head>
@@ -419,11 +424,14 @@
 
     <div id="mySidebar" class="sidebar">
         <a href="javascript:void(0)" id="loginBtn">Đăng nhập</a>
-        <a href="javascript:void(0)" id="newsBtn" style="display:none;">Tin mới</a>
-        <a href="javascript:void(0)" id="statsBtn" style="display:none;">Thống kê</a>
+        <a href="javascript:void(0)" id="newsBtn" style="display:none;">Đăng tin mới</a>
+        <a href="javascript:void(0)" id="statsBtn" style="display:none;">Tạo thống kê</a>
+	<a href="javascript:void(0)" id="pollBtn" >Tạo bình chọn</a>
+
+	<a href="javascript:void(0)" id="settingsBtn" style="display:none;">Tải ảnh</a>
         <a href="javascript:void(0)" id="changePasswordBtn" style="display:none;">Đổi mật khẩu</a>
         <a href="javascript:void(0)" id="createAccountBtn" style="display:none;">Tạo tài khoản</a>
-        <a href="javascript:void(0)" id="settingsBtn" style="display:none;">Cấu hình</a>
+        
         <a href="javascript:void(0)" id="logoutBtn" style="display:none;">Đăng xuất</a>
     </div>
 
@@ -549,7 +557,31 @@
             <div id="auth-status"></div>
         </div>
     </div>
-    
+    <!-- Poll Page -->
+<div id="pollPage" class="page" style="display:none;">
+  <button class="back-btn" id="backFromPollBtn" style="margin-top:1cm;">Quay lại</button>
+  <div class="form-container">
+    <h2 id="pollPageTitle" class="text-2xl font-bold mb-4">Tạo bình chọn</h2>
+    <input type="text" id="pollTitle" placeholder="Chủ đề bình chọn">
+    <div id="optionsContainer"></div>
+    <button class="add-item-btn" id="addOptionBtn">Thêm đáp án</button>
+    <button id="submitPollBtn" class="bg-blue-500 hover:bg-blue-600 mt-3">Đăng bình chọn</button>
+  </div>
+</div>
+
+<!-- Poll Vote Modal -->
+<div id="pollVoteModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close-button">&times;</span>
+    <h2 id="pollVoteTitle" class="text-xl font-bold mb-4"></h2>
+    <input type="text" id="voterNameInput" placeholder="Tên của bạn (ghi nhận)" class="mb-2">
+    <div id="pollOptionsList" class="flex flex-col gap-2 mb-4"></div>
+    <button id="submitVoteBtn" class="bg-green-500 text-white px-4 py-2 rounded">Gửi bình chọn</button>
+    <div id="votesList" class="mt-4 text-sm text-gray-700"></div>
+    <div id="votesTable" class="mt-4 overflow-x-auto"></div>
+  </div>
+</div>
+
     <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal">
         <div class="modal-content">
@@ -602,8 +634,22 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-       import { getFirestore, collection, addDoc, onSnapshot, query, setLogLevel, updateDoc, doc, getDocs, deleteDoc } 
-    from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+      import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  setLogLevel,
+  updateDoc,
+  doc,
+  getDocs,
+  deleteDoc,
+  getDoc,
+  runTransaction,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
 
 
         
@@ -677,6 +723,267 @@
 	const printHouseholdsBtn = document.getElementById("printHouseholdsBtn");
 	const exportExcelBtn = document.getElementById("exportExcelBtn");
 	const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+// Poll UI elements
+const pollBtn = document.getElementById("pollBtn");
+const pollPage = document.getElementById("pollPage");
+const pollPageTitle = document.getElementById("pollPageTitle");
+const pollTitleInput = document.getElementById("pollTitle");
+const optionsContainer = document.getElementById("optionsContainer");
+const addOptionBtn = document.getElementById("addOptionBtn");
+const submitPollBtn = document.getElementById("submitPollBtn");
+const backFromPollBtn = document.getElementById("backFromPollBtn");
+
+const pollVoteModal = document.getElementById("pollVoteModal");
+const pollVoteTitle = document.getElementById("pollVoteTitle");
+const voterNameInput = document.getElementById("voterNameInput");
+const pollOptionsList = document.getElementById("pollOptionsList");
+const submitVoteBtn = document.getElementById("submitVoteBtn");
+
+// -------- Poll logic (paste here, after DOM const declarations) --------
+function addOptionUI(text = "") {
+  const div = document.createElement('div');
+  div.className = 'item-card';
+  div.innerHTML = `
+    <input type="text" class="option-input" placeholder="Đáp án" value="${text}">
+    <button class="remove-item-btn">Xóa</button>
+  `;
+  optionsContainer.appendChild(div);
+  div.querySelector('.remove-item-btn').onclick = () => div.remove();
+  return div;
+}
+
+if (addOptionBtn) addOptionBtn.onclick = () => addOptionUI();
+
+if (pollBtn) pollBtn.onclick = () => {
+  pollPageTitle.textContent = "Tạo bình chọn mới";
+  pollTitleInput.value = "";
+  optionsContainer.innerHTML = "";
+  addOptionUI();
+  addOptionUI();
+  showPage('pollPage');
+};
+
+if (backFromPollBtn) backFromPollBtn.onclick = () => showPage('main');
+
+if (submitPollBtn) submitPollBtn.onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) return alert("Bạn cần đăng nhập để tạo bình chọn.");
+
+  const title = pollTitleInput.value.trim();
+  const opts = Array.from(optionsContainer.querySelectorAll('.option-input'))
+    .map(i => i.value.trim())
+    .filter(v => v !== '');
+
+  if (!title || opts.length < 2) return alert("Nhập chủ đề và ít nhất 2 đáp án.");
+
+  const postData = {
+    type: "poll",
+    title,
+    options: opts.map(t => ({ text: t, votes: 0 })),
+    author: user.email,
+    createdAt: new Date()
+  };
+
+  try {
+    await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
+    showPage('main');
+    alert("Tạo bình chọn thành công.");
+  } catch (err) {
+    console.error("Lỗi tạo poll:", err);
+    alert("Lỗi khi tạo bình chọn, kiểm tra console.");
+  }
+};
+
+// open poll modal and render options
+let currentPollId = null;
+// MỞ modal bình chọn, dùng pollDoc (được truyền vào) — KHÔNG DÙNG biến 'news' ở đây
+function openPollVoting(pollDoc) {
+  // Thiết lập biến global
+  currentPollId = pollDoc.id;
+  pollVoteTitle.textContent = pollDoc.title || "Bình chọn";
+  voterNameInput.value = "";
+  pollOptionsList.innerHTML = "";
+
+  // render các đáp án (radio)
+  (pollDoc.options || []).forEach((opt, i) => {
+    const div = document.createElement('div');
+    div.className = "flex items-center gap-2";
+    div.innerHTML = `
+      <label class="flex items-center gap-2 w-full">
+        <input type="radio" name="voteOption" value="${i}">
+        <span class="flex-1">${opt.text}</span>
+        <span class="text-sm text-gray-500">(${(opt.votes||0)} phiếu)</span>
+      </label>
+    `;
+    pollOptionsList.appendChild(div);
+  });
+
+  // Hiện modal
+  pollVoteModal.style.display = "flex";
+
+  // Bắt đầu lắng nghe danh sách votes cho poll này (dùng pollDoc, không dùng 'news')
+  subscribeVotes(pollDoc.id, pollDoc.options || []);
+}
+
+
+// close modal handlers (reuse existing close-button)
+document.querySelectorAll('#pollVoteModal .close-button').forEach(btn => {
+  btn.onclick = () => { pollVoteModal.style.display = "none"; };
+});
+window.addEventListener('click', e => {
+  if (e.target === pollVoteModal) pollVoteModal.style.display = "none";
+});
+
+// submit vote: transaction, ghi subcollection votes/{voterId}
+if (submitVoteBtn) submitVoteBtn.onclick = async () => {
+  const nameRaw = (voterNameInput.value || '').trim();
+  const sel = document.querySelector("input[name='voteOption']:checked");
+  if (!nameRaw || !sel) return alert("Nhập tên và chọn 1 đáp án.");
+
+  const optionIndex = parseInt(sel.value, 10);
+  if (isNaN(optionIndex)) return alert("Đáp án không hợp lệ.");
+  if (!currentPollId) return alert("Không có poll đang chọn.");
+
+  const voterId = (auth.currentUser && auth.currentUser.uid)
+    ? `uid_${auth.currentUser.uid}`
+    : encodeURIComponent(nameRaw.toLowerCase().replace(/\s+/g, '_'));
+
+// Tạo refs bằng segments, tránh lỗi path string
+const pollRef = doc(db, "artifacts", appId, "public", "data", "news", currentPollId);
+const voterDocRef = doc(db, "artifacts", appId, "public", "data", "news", currentPollId, "votes", voterId);
+
+
+
+
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const pollSnap = await tx.get(pollRef);
+      if (!pollSnap.exists()) throw new Error("Poll không tồn tại.");
+
+      const voterSnap = await tx.get(voterDocRef);
+      if (voterSnap.exists()) throw new Error("Bạn đã bầu rồi (theo id này).");
+
+      const data = pollSnap.data();
+      const options = Array.isArray(data.options) ? [...data.options] : [];
+
+      if (!options[optionIndex]) throw new Error("Lựa chọn không tồn tại.");
+
+      options[optionIndex] = {
+        ...options[optionIndex],
+        votes: (options[optionIndex].votes || 0) + 1
+      };
+
+      tx.update(pollRef, { options, updatedAt: serverTimestamp() });
+      tx.set(voterDocRef, { name: nameRaw, option: optionIndex, createdAt: serverTimestamp() });
+    });
+
+    pollVoteModal.style.display = "none";
+    alert("Cảm ơn, phiếu của bạn đã được ghi nhận.");
+  } catch (err) {
+    console.error("Lỗi vote:", err);
+    alert("Lỗi khi bầu: " + (err.message || "Thử lại sau."));
+  }
+};
+// render danh sách ai vote
+function renderVotesList(votes, options) {
+  const votesListDiv = document.getElementById("votesList");
+  votesListDiv.innerHTML = "";
+
+  // nhóm theo đáp án
+  const grouped = {};
+  votes.forEach(v => {
+    const optIndex = v.option;
+    if (!grouped[optIndex]) grouped[optIndex] = [];
+    grouped[optIndex].push(v.name);
+  });
+
+  // hiển thị
+  Object.keys(grouped).forEach(optIndex => {
+    const people = grouped[optIndex];
+    const optionText = options[optIndex] ? options[optIndex].text : `Đáp án ${optIndex}`;
+    const div = document.createElement("div");
+    div.className = "mb-2";
+    div.innerHTML = `<strong>${optionText}:</strong> ${people.join(", ")}`;
+    votesListDiv.appendChild(div);
+  });
+}
+function renderVotesTable(votes, options) {
+  const votesTableDiv = document.getElementById("votesTable");
+  if (!votesTableDiv) return;
+
+  // Header
+  let html = `<table class="table-auto border-collapse border border-gray-400 w-full text-sm">
+    <thead>
+      <tr>
+        <th class="border border-gray-400 px-2 py-1">Người bình chọn</th>`;
+  options.forEach(opt => {
+    html += `<th class="border border-gray-400 px-2 py-1">${opt.text}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  // Các dòng dữ liệu
+  votes.forEach(v => {
+    html += `<tr><td class="border border-gray-400 px-2 py-1">${v.name}</td>`;
+    options.forEach((_, idx) => {
+      html += `<td class="border border-gray-400 px-2 py-1 text-center">${v.option === idx ? "X" : ""}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  votesTableDiv.innerHTML = html;
+}
+
+
+
+function subscribeVotes(pollId, options) {
+  const votesRef = collection(db, "artifacts", appId, "public", "data", "news", pollId, "votes");
+
+  onSnapshot(votesRef, (snapshot) => {
+    const votesList = [];
+    snapshot.forEach(doc => {
+      votesList.push(doc.data());
+    });
+    
+    renderVotesTable(votesList, options); 
+  });
+}
+
+// helper to render poll card inside your existing news render loop (call when item.type === 'poll')
+function renderPollCard(news) {
+  const card = document.createElement('div');
+  card.className = 'news-card';
+  card.innerHTML = `
+    <h3>${news.title}</h3>
+    <p class="text-sm text-gray-500">Bởi: ${news.author || 'không rõ'}</p>
+  `;
+  const actions = document.createElement('div');
+  actions.className = 'mt-2 flex gap-2';
+  const joinBtn = document.createElement('button');
+  joinBtn.className = 'bg-blue-500 text-white px-3 py-1 rounded';
+  joinBtn.textContent = 'Tham gia bình chọn';
+  joinBtn.onclick = (e) => { e.stopPropagation(); openPollVoting(news); };
+
+  const resultsDiv = document.createElement('div');
+  resultsDiv.className = 'mt-3 text-sm';
+  (news.options || []).forEach(opt => {
+    const p = document.createElement('div');
+    p.innerHTML = `${opt.text} — <strong>${opt.votes || 0}</strong> phiếu`;
+    resultsDiv.appendChild(p);
+  });
+
+  actions.appendChild(joinBtn);
+  card.appendChild(actions);
+  card.appendChild(resultsDiv);
+
+  return card;
+}
+
+
+
+
+
 
 	// Ẩn mặc định an toàn (nếu HTML chưa để display:none)
 [ printHouseholdsBtn, exportExcelBtn, downloadPdfBtn].forEach(b => {
@@ -899,7 +1206,7 @@ onAuthStateChanged(auth, (user) => {
     newsBtn.style.display = "block";
     statsBtn.style.display = "block";
     settingsBtn.style.display = "block";
-   
+    pollBtn.style.display = "block";
 
     // hiện các nút export
     setExportButtonsVisible(true);
@@ -916,10 +1223,10 @@ onAuthStateChanged(auth, (user) => {
     changePasswordBtn.style.display = "none";
     createAccountBtn.style.display = "none";
     settingsBtn.style.display = "none";
-	newsBtn.style.display = "none";
+    newsBtn.style.display = "none";
     statsBtn.style.display = "none";
     passwordInput.value = "";
-
+    pollBtn.style.display = "none";
     // ẩn các nút export
     setExportButtonsVisible(false);
   }
@@ -1053,7 +1360,9 @@ else if (news.type === 'stats') {
     // Subscribe to households for this stats post (re-subscribe whenever opening a stats post)
     subscribeHouseholds(currentStatsPostId);
 }
-
+    else if (news.type === 'poll') {
+        openPollVoting(news); // mở modal bình chọn
+    }
 
                 };
             });
