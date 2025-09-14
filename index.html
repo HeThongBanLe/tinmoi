@@ -411,19 +411,39 @@
   max-height: 90vh;    /* chiếm tối đa 90% chiều cao màn hình */
   overflow-y: auto;    /* có scroll nếu nội dung dài */
 }
-.poll-popup {
-  max-width: 90%;       /* gói gọn trong màn hình */
-  width: 400px;         /* hoặc để auto nếu muốn responsive */
-  box-sizing: border-box;
-  word-wrap: break-word; /* chữ dài sẽ xuống dòng */
-  overflow-wrap: break-word;
-  overflow-x: hidden;    /* ẩn tràn ngang */
+/* Modal căn giữa, responsive */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
 }
-.poll-popup input,
-.poll-popup label,
-.poll-popup p {
-  max-width: 100%;       /* không vượt quá popup */
+
+.modal-content {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  max-width: 92vw;   /* không vượt quá màn hình */
+  width: 420px;      /* chiều rộng hợp lý desktop */
+  max-height: 80vh;  /* không vượt quá màn hình dọc */
+  overflow-y: auto;  /* nếu dài thì cuộn bên trong */
   box-sizing: border-box;
+}
+
+/* Căn radio + text thẳng hàng */
+.poll-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.poll-option input[type="radio"] {
+  margin: 0;
+  flex: 0 0 auto;
 }
 		
     </style>
@@ -1956,6 +1976,7 @@ function escapeHtml(s) {
 
 </body>
 </html>
+
 
 
 
