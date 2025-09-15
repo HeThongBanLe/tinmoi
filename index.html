@@ -311,22 +311,22 @@
             font-size: 12px;
             display: none;
         }
- .delete-news-btn {
-    position: absolute;
-    top: 48px; /* nằm dưới nút sửa */
-    right: 12px;
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 12px;
-    display: none;
-}
-.delete-news-btn:hover {
-    background-color: #c0392b;
-}
+ 		.delete-news-btn {
+   		position: absolute;
+   		top: 48px; /* nằm dưới nút sửa */
+    	right: 12px;
+    	background-color: #e74c3c;
+    	color: white;
+    	border: none;
+    	padding: 8px 12px;
+    	border-radius: 8px;
+    	cursor: pointer;
+    	font-size: 12px;
+    	display: none;
+		}
+	.delete-news-btn:hover {
+    	background-color: #c0392b;
+		}
 
         /* Full Article Page Styling */
         #fullArticlePage, #statsEntryPage {
@@ -363,25 +363,25 @@
                 width: 200px;
             }
         }
-	#registrantNameInput { display: block !important; background: yellow; }
-	 #statsEntryPage {
-  	flex-direction: column;
- 	 align-items: flex-start;
+		#registrantNameInput { display: block !important; background: yellow; }
+	 	#statsEntryPage {
+  		flex-direction: column;
+ 	 	align-items: flex-start;
+		}
+
+	.scroll-fixed-30cm {
+  	max-height: 30cm;
+
+  	/* fallback ~1134px */
+ 	 max-height: 1134px;
+
+  	overflow-y: auto;
+  	overflow-x: hidden;
+  	padding-right: 8px;
+  	box-sizing: border-box;
 	}
 
-.scroll-fixed-30cm {
-  max-height: 30cm;
-
-  /* fallback ~1134px */
-  max-height: 1134px;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 8px;
-  box-sizing: border-box;
-}
-
-@media print {
+	@media print {
   .scroll-fixed-30cm {
     max-height: none !important;
     overflow: visible !important;
@@ -635,20 +635,20 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
       import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  setLogLevel,
-  updateDoc,
-  doc,
-  getDocs,
-  deleteDoc,
-  getDoc,
-  runTransaction,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+ 			 getFirestore,
+  			 collection,
+  			addDoc,
+  			onSnapshot,
+  			query,
+  			setLogLevel,
+  			updateDoc,
+ 			 doc,
+ 			 getDocs,
+  			deleteDoc,
+  			getDoc,
+  			runTransaction,
+  			serverTimestamp
+			} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 
 
@@ -664,10 +664,10 @@
         let editingDocId = null;
         let currentPostType = 'news';
         let currentStatsPostId = null;
-	let currentStatsFields = [];
-	// expose ra window để script khác (non-module) có thể đọc
-	window.currentStatsFields = currentStatsFields;
-	window.currentHouseholds = []; // cache households hiện tại
+		let currentStatsFields = [];
+		// expose ra window để script khác (non-module) có thể đọc
+		window.currentStatsFields = currentStatsFields;
+		window.currentHouseholds = []; // cache households hiện tại
         // UI elements
         const sidebar = document.getElementById("mySidebar");
         const mainContent = document.getElementById("main");
@@ -689,7 +689,7 @@
         const newsDescriptionInput = document.getElementById("newsDescription");
         const chaptersContainer = document.getElementById("chaptersContainer");
         const addChapterBtn = document.getElementById("addChapterBtn");
-	const addFieldBtn = document.getElementById("addFieldBtn");
+		const addFieldBtn = document.getElementById("addFieldBtn");
         const menuToggle = document.getElementById("menuToggle");
         const submitNewsBtn = document.getElementById("submitNewsBtn");
         const newsPageTitle = document.getElementById("newsPageTitle");
@@ -707,7 +707,7 @@
         const addPersonBtn = document.getElementById("addPersonBtn");
         const saveHouseholdBtn = document.getElementById("saveHouseholdBtn");
         const householdList = document.getElementById("householdList");
-	const householdSearch = document.getElementById("householdSearch");
+		const householdSearch = document.getElementById("householdSearch");
 
         const backToMainBtn = document.getElementById("backToMainBtn");
         const backFromSettingsBtn = document.getElementById("backFromSettingsBtn");
@@ -719,25 +719,25 @@
         const changePasswordModal = document.getElementById("changePasswordModal");
         const createAccountModal = document.getElementById("createAccountModal");
         
-	const exportHouseholdsBtn = document.getElementById("exportHouseholdsBtn");
-	const printHouseholdsBtn = document.getElementById("printHouseholdsBtn");
-	const exportExcelBtn = document.getElementById("exportExcelBtn");
-	const downloadPdfBtn = document.getElementById("downloadPdfBtn");
-// Poll UI elements
-const pollBtn = document.getElementById("pollBtn");
-const pollPage = document.getElementById("pollPage");
-const pollPageTitle = document.getElementById("pollPageTitle");
-const pollTitleInput = document.getElementById("pollTitle");
-const optionsContainer = document.getElementById("optionsContainer");
-const addOptionBtn = document.getElementById("addOptionBtn");
-const submitPollBtn = document.getElementById("submitPollBtn");
-const backFromPollBtn = document.getElementById("backFromPollBtn");
+		const exportHouseholdsBtn = document.getElementById("exportHouseholdsBtn");
+		const printHouseholdsBtn = document.getElementById("printHouseholdsBtn");
+		const exportExcelBtn = document.getElementById("exportExcelBtn");
+		const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+		// Poll UI elements
+		const pollBtn = document.getElementById("pollBtn");
+		const pollPage = document.getElementById("pollPage");
+		const pollPageTitle = document.getElementById("pollPageTitle");
+		const pollTitleInput = document.getElementById("pollTitle");
+		const optionsContainer = document.getElementById("optionsContainer");
+		const addOptionBtn = document.getElementById("addOptionBtn");
+		const submitPollBtn = document.getElementById("submitPollBtn");
+		const backFromPollBtn = document.getElementById("backFromPollBtn");
 
-const pollVoteModal = document.getElementById("pollVoteModal");
-const pollVoteTitle = document.getElementById("pollVoteTitle");
-const voterNameInput = document.getElementById("voterNameInput");
-const pollOptionsList = document.getElementById("pollOptionsList");
-const submitVoteBtn = document.getElementById("submitVoteBtn");
+		const pollVoteModal = document.getElementById("pollVoteModal");
+		const pollVoteTitle = document.getElementById("pollVoteTitle");
+		const voterNameInput = document.getElementById("voterNameInput");
+		const pollOptionsList = document.getElementById("pollOptionsList");
+		const submitVoteBtn = document.getElementById("submitVoteBtn");
 
 // -------- Poll logic (paste here, after DOM const declarations) --------
 function addOptionUI(text = "") {
@@ -839,7 +839,6 @@ div.innerHTML = `
   subscribeVotes(pollDoc.id, pollDoc.options || []);
 }
 
-
 // close modal handlers (reuse existing close-button)
 document.querySelectorAll('#pollVoteModal .close-button').forEach(btn => {
   btn.onclick = () => { pollVoteModal.style.display = "none"; };
@@ -865,11 +864,6 @@ if (submitVoteBtn) submitVoteBtn.onclick = async () => {
 // Tạo refs bằng segments, tránh lỗi path string
 const pollRef = doc(db, "artifacts", appId, "public", "data", "news", currentPollId);
 const voterDocRef = doc(db, "artifacts", appId, "public", "data", "news", currentPollId, "votes", voterId);
-
-
-
-
-
   try {
     await runTransaction(db, async (tx) => {
       const pollSnap = await tx.get(pollRef);
@@ -949,8 +943,6 @@ function renderVotesTable(votes, options) {
   votesTableDiv.innerHTML = html;
 }
 
-
-
 function subscribeVotes(pollId, options) {
   const votesRef = collection(db, "artifacts", appId, "public", "data", "news", pollId, "votes");
 
@@ -958,8 +950,7 @@ function subscribeVotes(pollId, options) {
     const votesList = [];
     snapshot.forEach(doc => {
       votesList.push(doc.data());
-    });
-    
+    }); 
     renderVotesTable(votesList, options); 
   });
 }
@@ -993,12 +984,6 @@ function renderPollCard(news) {
 
   return card;
 }
-
-
-
-
-
-
 	// Ẩn mặc định an toàn (nếu HTML chưa để display:none)
 [ printHouseholdsBtn, exportExcelBtn, downloadPdfBtn].forEach(b => {
   if (b) b.style.display = "none";
@@ -1012,9 +997,6 @@ function setExportButtonsVisible(visible) {
   if (exportExcelBtn) exportExcelBtn.style.display = v;
   if (downloadPdfBtn) downloadPdfBtn.style.display = v;
 }
-
-
-
         // Close buttons for modals
         document.querySelectorAll(".close-button").forEach(btn => {
             btn.onclick = function() {
@@ -1050,8 +1032,6 @@ function setExportButtonsVisible(visible) {
                 authStatus.textContent = "Lỗi: " + error.message;
             }
         };
-
-
          // Logout
         logoutBtn.onclick = () => {
   	signOut(auth).catch(error => console.error("Lỗi đăng xuất:", error));
@@ -1242,8 +1222,6 @@ backFromStatsBtn.onclick = () => {
   closeSidebar();
 };
 
-
-
 onAuthStateChanged(auth, (user) => {
   if (user) {
     
@@ -1347,14 +1325,12 @@ onAuthStateChanged(auth, (user) => {
 };
 
 
-
-
-		const deleteBtn = card.querySelector('.delete-news-btn');
-if (user && user.email === news.author) {
-    deleteBtn.style.display = 'block';
-} else {
+	const deleteBtn = card.querySelector('.delete-news-btn');
+	if (user && user.email === news.author) {
+   		 deleteBtn.style.display = 'block';
+	} else {
     deleteBtn.style.display = 'none';
-}
+	}
 
 deleteBtn.onclick = async (e) => {
     e.stopPropagation();
@@ -1415,26 +1391,23 @@ deleteBtn.onclick = async (e) => {
                         showPage('fullArticlePage');
                         window.scrollTo(0, 0);
                     }
-else if (news.type === 'stats') {
-    currentStatsPostId = news.id;
-    statsEntryPageTitle.textContent = `Thống kê cho: ${news.title}`;
-    currentStatsFields = news.fields || []; // lấy danh sách fields do người tạo định nghĩa
-    window.currentStatsFields = currentStatsFields;
-    showPage('statsEntryPage');
+				else if (news.type === 'stats') {
+ 					   currentStatsPostId = news.id;
+    					statsEntryPageTitle.textContent = `Thống kê cho: ${news.title}`;
+   						 currentStatsFields = news.fields || []; // lấy danh sách fields do người tạo định nghĩa
+    					window.currentStatsFields = currentStatsFields;
+    					showPage('statsEntryPage');
 
+   					 // Reset form nhập hộ gia đình
+   					 //householdFormContainer.innerHTML = '';
+    					addPerson(currentStatsFields); // tạo form mới dựa vào fields
 
-
-
-    // Reset form nhập hộ gia đình
-    //householdFormContainer.innerHTML = '';
-    addPerson(currentStatsFields); // tạo form mới dựa vào fields
-
-    // Subscribe to households for this stats post (re-subscribe whenever opening a stats post)
-    subscribeHouseholds(currentStatsPostId);
-}
-    else if (news.type === 'poll') {
-        openPollVoting(news); // mở modal bình chọn
-    }
+   					 // Subscribe to households for this stats post (re-subscribe whenever opening a stats post)
+   						 subscribeHouseholds(currentStatsPostId);
+						}
+   					 else if (news.type === 'poll') {
+       					 openPollVoting(news); // mở modal bình chọn
+    					}
 
                 };
             });
@@ -1558,8 +1531,6 @@ querySnapshot.forEach(docSnap => {
     }
 };
 
-
-
         // Listen for household data changes on the current stats post
         onSnapshot(query(collection(db, `/artifacts/${appId}/public/data/news/${currentStatsPostId || 'placeholder'}/households`)), (querySnapshot) => {
             householdList.innerHTML = '';
@@ -1607,6 +1578,8 @@ querySnapshot.forEach(docSnap => {
         });
         
     </script>
+
+	
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   const householdSearch = document.getElementById("householdSearch");
@@ -1630,6 +1603,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 </script>
+
+	
 <script>
 // nút export (lưu dạng bảng giống excel)
 document.getElementById("exportHouseholdsBtn").addEventListener("click", () => {
@@ -1660,8 +1635,6 @@ document.getElementById("exportHouseholdsBtn").addEventListener("click", () => {
 
   // body
   const tbody = document.createElement("tbody");
-
-
   // chọn màu xen kẽ cho từng hộ
 households.forEach((hh, index) => {
   const registrant = hh.registrantName || "";
@@ -1730,7 +1703,6 @@ printWindow.document.write(`
   printWindow.document.close();
   printWindow.print();
 });
-
 </script>
 
 
@@ -1819,13 +1791,10 @@ document.getElementById("downloadPdfBtn").addEventListener("click", () => {
 
   pdfMake.createPdf(docDefinition).download("danhsach-thongke.pdf");
 });
-
-
 </script>
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
@@ -2009,4 +1978,5 @@ function escapeHtml(s) {
 
 </body>
 </html>
+
 
