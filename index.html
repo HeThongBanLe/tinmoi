@@ -767,7 +767,7 @@ if (backFromPollBtn) backFromPollBtn.onclick = () => showPage('main');
 
 if (submitPollBtn) submitPollBtn.onclick = async () => {
   const user = auth.currentUser;
-  if (!user) return alert("Bạn cần đăng nhập để tạo bình chọn.");
+  if (!user) return alert("Bạn cần đăng nhập để lưu bình chọn.");
 
   const title = pollTitleInput.value.trim();
   const opts = Array.from(optionsContainer.querySelectorAll('.option-input'))
@@ -781,18 +781,30 @@ if (submitPollBtn) submitPollBtn.onclick = async () => {
     title,
     options: opts.map(t => ({ text: t, votes: 0 })),
     author: user.email,
-    createdAt: new Date()
+    updatedAt: new Date()
   };
 
   try {
-    await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
+    if (editingDocId) {
+      // 🔹 Nếu đang sửa → update lại poll cũ
+      await updateDoc(doc(db, `/artifacts/${appId}/public/data/news`, editingDocId), postData);
+      alert("Cập nhật bình chọn thành công!");
+    } else {
+      // 🔹 Nếu tạo mới → addDoc
+      postData.createdAt = new Date();
+      await addDoc(collection(db, `/artifacts/${appId}/public/data/news`), postData);
+      alert("Tạo bình chọn thành công!");
+    }
+
+    editingDocId = null;
+    submitPollBtn.textContent = "Đăng bình chọn"; // reset nút
     showPage('main');
-    alert("Tạo bình chọn thành công.");
   } catch (err) {
-    console.error("Lỗi tạo poll:", err);
-    alert("Lỗi khi tạo bình chọn, kiểm tra console.");
+    console.error("Lỗi lưu poll:", err);
+    alert("Lỗi khi lưu bình chọn, kiểm tra console.");
   }
 };
+
 
 // open poll modal and render options
 let currentPollId = null;
