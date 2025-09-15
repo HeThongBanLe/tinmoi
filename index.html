@@ -406,26 +406,12 @@
   }
 }
 .modal-content {
-  width: 80%;          /* to ra gần full màn hình */
-  max-width: 800px;    /* rộng tối đa 900px */
+  width: 90%;          /* to ra gần full màn hình */
+  max-width: 900px;    /* rộng tối đa 900px */
   max-height: 90vh;    /* chiếm tối đa 90% chiều cao màn hình */
   overflow-y: auto;    /* có scroll nếu nội dung dài */
 }
-/* Modal căn giữa, responsive */
 
-/* Căn radio + text thẳng hàng */
-.poll-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.poll-option input[type="radio"] {
-  margin: 0;
-  flex: 0 0 auto;
-}
-		
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -822,13 +808,14 @@ function openPollVoting(pollDoc) {
   (pollDoc.options || []).forEach((opt, i) => {
     const div = document.createElement('div');
     div.className = "flex items-center gap-2";
-    div.innerHTML = `
-      <label class="flex items-center gap-2 w-full">
-        <input type="radio" name="voteOption" value="${i}">
-        <span class="flex-1">${opt.text}</span>
-        <span class="text-sm text-gray-500">(${(opt.votes||0)} phiếu)</span>
-      </label>
-    `;
+ div.className = "flex items-center gap-2";
+div.innerHTML = `
+  <label class="flex items-center gap-2 whitespace-nowrap">
+    <input type="radio" name="voteOption" value="${i}">
+    <span>${opt.text}</span>
+    <span class="text-sm text-gray-500 ml-2">(${(opt.votes||0)} phiếu)</span>
+  </label>
+`;
     pollOptionsList.appendChild(div);
   });
 
@@ -1275,28 +1262,43 @@ onAuthStateChanged(auth, (user) => {
                     editBtn.style.display = 'none';
                 }
 
-              editBtn.onclick = (e) => {
-    e.stopPropagation();
-    editingDocId = news.id;
-    currentPostType = news.type;
-    newsPageTitle.textContent = news.type === 'news' ? "Viết tin mới" : "Viết bài thống kê";
-    newsTitleInput.value = news.title;
-    newsImageUrlInput.value = news.imageUrl || '';
-    newsDescriptionInput.value = news.description || '';
+  editBtn.onclick = (e) => {
+  e.stopPropagation();
+  editingDocId = news.id;
+  currentPostType = news.type;
 
-    chaptersContainer.innerHTML = '';
+  if (news.type === 'news') {
+      newsPageTitle.textContent = "Viết tin mới";
+      newsTitleInput.value = news.title;
+      newsImageUrlInput.value = news.imageUrl || '';
+      newsDescriptionInput.value = news.description || '';
+      chaptersContainer.innerHTML = '';
+      (news.chapters || []).forEach(chapter =>
+          addChapter(chapter.title, chapter.imageUrl, chapter.content)
+      );
+      submitNewsBtn.textContent = "Cập nhật bài viết";
+      showPage('newsPage');
 
-    if (news.type === 'news') {
-        // populate chapters
-        (news.chapters || []).forEach(chapter => addChapter(chapter.title, chapter.imageUrl, chapter.content));
-    } else if (news.type === 'stats') {
-        // populate fields for stats
-        (news.fields || []).forEach(fieldName => addField(fieldName));
-    }
+  } else if (news.type === 'stats') {
+      newsPageTitle.textContent = "Viết bài thống kê";
+      newsTitleInput.value = news.title;
+      newsDescriptionInput.value = news.description || '';
+      chaptersContainer.innerHTML = '';
+      (news.fields || []).forEach(fieldName => addField(fieldName));
+      submitNewsBtn.textContent = "Cập nhật bài viết";
+      showPage('newsPage');
 
-    submitNewsBtn.textContent = "Cập nhật bài viết";
-    showPage('newsPage');
+  } else if (news.type === 'poll') {
+      // 👇 thêm xử lý poll
+      pollPageTitle.textContent = "Sửa bình chọn";
+      pollTitleInput.value = news.title || "";
+      optionsContainer.innerHTML = "";
+      (news.options || []).forEach(opt => addOptionUI(opt.text));
+      submitPollBtn.textContent = "Cập nhật bình chọn";
+      showPage('pollPage');
+  }
 };
+
 
 
 
@@ -1956,8 +1958,4 @@ function escapeHtml(s) {
 
 </body>
 </html>
-
-
-
-
 
