@@ -761,6 +761,7 @@ if (pollBtn) pollBtn.onclick = () => {
   addOptionUI();
   addOptionUI();
   showPage('pollPage');
+  closeSidebar();
 };
 
 if (backFromPollBtn) backFromPollBtn.onclick = () => showPage('main');
@@ -1028,7 +1029,10 @@ function setExportButtonsVisible(visible) {
         }
         
         // Login functionality
-        loginBtn.onclick = () => loginModal.style.display = "flex";
+        loginBtn.onclick = () => {
+    	loginModal.style.display = "flex";
+    	closeSidebar();   // đóng sidebar luôn khi mở modal đăng nhập
+	};
         
         document.getElementById("loginSubmitBtn").onclick = async function() {
             const authStatus = document.getElementById("auth-status");
@@ -1046,17 +1050,25 @@ function setExportButtonsVisible(visible) {
                 authStatus.textContent = "Lỗi: " + error.message;
             }
         };
-        
-        // Logout functionality
-        logoutBtn.onclick = () => signOut(auth).catch(error => console.error("Lỗi đăng xuất:", error));
+
+
+         // Logout
+        logoutBtn.onclick = () => {
+  	signOut(auth).catch(error => console.error("Lỗi đăng xuất:", error));
+  	closeSidebar();
+	};
         
         // Change password functionality
-        changePasswordBtn.onclick = () => changePasswordModal.style.display = "flex";
+        changePasswordBtn.onclick = () => {
+ 	 changePasswordModal.style.display = "flex";
+  	closeSidebar();   // đóng sidebar ngay sau khi mở modal
+	};
         
         document.getElementById("changePasswordSubmitBtn").onclick = async function() {
             const newPasswordInput = document.getElementById("newPasswordInput");
             const passwordStatus = document.getElementById("password-status");
             const user = auth.currentUser;
+	    
             if (user) {
                 try {
                     await updatePassword(user, newPasswordInput.value);
@@ -1069,7 +1081,10 @@ function setExportButtonsVisible(visible) {
         };
         
         // Create account functionality
-        createAccountBtn.onclick = () => createAccountModal.style.display = "flex";
+        createAccountBtn.onclick = () => {
+ 	 createAccountModal.style.display = "flex";
+ 	 closeSidebar();   // đóng sidebar sau khi mở modal
+	};
         
         document.getElementById("createAccountSubmitBtn").onclick = async function() {
             const newEmailInput = document.getElementById("newEmailInput");
@@ -1184,6 +1199,7 @@ submitNewsBtn.onclick = async function() {
 	    addChapter();
 	    addChapterBtn.style.display = 'inline-block';
 	    addFieldBtn.style.display = 'none';
+	    closeSidebar(); 
         };
 
        statsBtn.onclick = () => {
@@ -1194,19 +1210,38 @@ submitNewsBtn.onclick = async function() {
     newsTitleInput.value = newsImageUrlInput.value = newsDescriptionInput.value = "";
     chaptersContainer.innerHTML = "";
     showPage('newsPage');
-    
+    closeSidebar(); 
     addField(); // 👈 thống kê thì thêm trường
     addChapterBtn.style.display = 'none';
     addFieldBtn.style.display = 'inline-block';
 
 };
 
+settingsBtn.onclick = () => {
+  showPage('settingsPage');
+  closeSidebar();
+};
 
-        settingsBtn.onclick = () => showPage('settingsPage');
-        backToMainBtn.onclick = () => showPage('main');
-        backFromSettingsBtn.onclick = () => showPage('main');
-        backFromNewsBtn.onclick = () => showPage('main');
-        backFromStatsBtn.onclick = () => showPage('main');
+backToMainBtn.onclick = () => {
+  showPage('main');
+  closeSidebar();
+};
+
+backFromSettingsBtn.onclick = () => {
+  showPage('main');
+  closeSidebar();
+};
+
+backFromNewsBtn.onclick = () => {
+  showPage('main');
+  closeSidebar();
+};
+
+backFromStatsBtn.onclick = () => {
+  showPage('main');
+  closeSidebar();
+};
+
 
 
 onAuthStateChanged(auth, (user) => {
@@ -1558,7 +1593,11 @@ querySnapshot.forEach(docSnap => {
             sidebar.classList.toggle('active');
             mainContent.classList.toggle('pushed');
         };
-
+	// --- Close sidebar helper ---
+	function closeSidebar() {
+  	  sidebar.classList.remove('active');
+  	  mainContent.classList.remove('pushed');
+	}
         // Close sidebar when clicking outside on mobile
         window.addEventListener('click', (e) => {
             if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
