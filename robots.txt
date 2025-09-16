@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tinmoi-doi8bduyphu.vercel.app/sitemap.xml
