@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaféShop POS</title>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvo70FjlePnBd7I6O1xFY5v_XK62oBdWE",
+  authDomain: "cafeshop-be3a1.firebaseapp.com",
+  projectId: "cafeshop-be3a1",
+  storageBucket: "cafeshop-be3a1.firebasestorage.app",
+  messagingSenderId: "1048804844121",
+  appId: "1:1048804844121:web:e5e9231284d5067a104748",
+  measurementId: "G-D0CQN675BS"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+window._app = app;
+window._auth = auth;
+window._db = db;
+window._fbFns = {
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged,
+  collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, orderBy
+};
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0f0d0b;
+  --surface: #1a1714;
+  --surface2: #231f1b;
+  --surface3: #2e2924;
+  --border: #3a332c;
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --cream: #f5ead8;
+  --text: #f0e6d3;
+  --text2: #b0a090;
+  --text3: #6b5f52;
+  --red: #e05a4e;
+  --green: #5aab7a;
+  --blue: #5a8fc9;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+h1,h2,h3 { font-family: 'Playfair Display', serif; }
+
+/* ─── TOAST ─── */
+#toast-container {
+  position: fixed; top: 16px; right: 16px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-left: 4px solid var(--gold); padding: 12px 16px;
+  border-radius: var(--radius); color: var(--text); font-size: 13px;
+  animation: slideIn .3s ease; max-width: 280px;
+}
+.toast.error { border-left-color: var(--red); }
+.toast.success { border-left-color: var(--green); }
+@keyframes slideIn { from { transform: translateX(120%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+
+/* ─── LOGIN ─── */
+#login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 30% 50%, #2a1f0e 0%, #0f0d0b 70%);
+}
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 48px 40px; width: 360px;
+  box-shadow: var(--shadow);
+}
+.login-logo {
+  text-align: center; margin-bottom: 32px;
+}
+.login-logo h1 { font-size: 32px; color: var(--gold); letter-spacing: 2px; }
+.login-logo p { color: var(--text2); font-size: 12px; margin-top: 4px; letter-spacing: 4px; text-transform: uppercase; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; color: var(--text2); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+.input-wrap { position: relative; display: flex; align-items: center; }
+.input-wrap input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color .2s;
+}
+.input-wrap input:focus { border-color: var(--gold); }
+.input-suffix {
+  position: absolute; right: 12px; color: var(--text3); font-size: 13px; pointer-events: none;
+}
+
+.btn {
+  width: 100%; padding: 12px; border: none; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all .2s; letter-spacing: .5px;
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #1a1000;
+}
+.btn-gold:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+.btn-sm { padding: 7px 14px; font-size: 13px; width: auto; border-radius: 6px; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { filter: brightness(1.1); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { filter: brightness(1.1); }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-blue:hover { filter: brightness(1.1); }
+
+/* ─── MAIN LAYOUT ─── */
+#app { display: none; min-height: 100vh; }
+
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 100;
+  transition: transform .3s;
+}
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h2 { font-size: 22px; color: var(--gold); }
+.sidebar-logo p { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 20px; cursor: pointer;
+  color: var(--text2); transition: all .2s; border-left: 3px solid transparent;
+  font-size: 14px; font-weight: 500;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--surface2); color: var(--gold); border-left-color: var(--gold); }
+.nav-icon { font-size: 18px; width: 22px; text-align: center; }
+
+.sidebar-user {
+  margin-top: auto; padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), #8b6914);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: #1a1000; flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: var(--text3); }
+.logout-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 4px; }
+.logout-btn:hover { color: var(--red); }
+
+.main-content {
+  margin-left: 220px; padding: 24px;
+  min-height: 100vh; transition: margin .3s;
+}
+
+/* ─── PAGE HEADER ─── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-title { font-size: 26px; color: var(--cream); }
+.page-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+/* ─── CARDS / SECTIONS ─── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+}
+.card-title {
+  font-size: 16px; font-weight: 600; color: var(--cream);
+  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ─── FORM ─── */
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.form-col { flex: 1; min-width: 160px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .8px; }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px;
+  outline: none; transition: border-color .2s; font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
+.field select option { background: var(--surface2); }
+
+/* ─── TABLE ─── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; padding: 10px 14px; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--text3);
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text);
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+/* ─── TAG ─── */
+.tag {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.tag-gold { background: #2a2010; color: var(--gold); border: 1px solid #4a3a18; }
+.tag-green { background: #0f2a1a; color: var(--green); border: 1px solid #1a4a2a; }
+.tag-blue { background: #0f1e2a; color: var(--blue); border: 1px solid #1a304a; }
+.tag-red { background: #2a0f0e; color: var(--red); border: 1px solid #4a1e1a; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  padding: 16px; backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px; width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow);
+}
+.modal-title {
+  font-size: 20px; color: var(--cream); margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 22px; }
+.modal-close:hover { color: var(--red); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ─── TABS ─── */
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab {
+  padding: 8px 18px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  border: 1px solid var(--border); transition: all .2s;
+}
+.tab.active { background: var(--gold); color: #1a1000; border-color: var(--gold); }
+.tab:hover:not(.active) { border-color: var(--gold); color: var(--gold); }
+
+/* ─── BÀNG POS ─── */
+.tables-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.table-card {
+  background: var(--surface2); border: 2px solid var(--border);
+  border-radius: var(--radius); padding: 16px 12px; text-align: center;
+  cursor: pointer; transition: all .2s; position: relative;
+  min-height: 100px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  user-select: none;
+}
+.table-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.table-card.occupied { border-color: var(--green); background: #0a1f12; }
+.table-card.occupied:hover { border-color: #7fcf9a; }
+.table-card.selected { border-color: var(--gold2); box-shadow: 0 0 0 3px rgba(201,168,76,.3); }
+.table-card.merged { border-color: var(--blue); background: #0a1525; }
+.table-num { font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; color: var(--text); }
+.table-status { font-size: 11px; color: var(--text3); }
+.table-amount { font-size: 13px; font-weight: 600; color: var(--green); }
+.table-staff { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.table-drag-hint { font-size: 10px; color: var(--text3); }
+.merge-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--blue); color: #fff; font-size: 10px;
+  border-radius: 10px; padding: 2px 6px; font-weight: 700;
+}
+
+/* ─── ORDER PANEL ─── */
+.order-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 340px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 200; transform: translateX(100%);
+  transition: transform .3s;
+}
+.order-panel.open { transform: translateX(0); }
+.order-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.order-title { font-size: 18px; font-weight: 700; flex: 1; }
+.order-body { flex: 1; overflow-y: auto; padding: 12px; }
+.order-item {
+  background: var(--surface2); border-radius: 8px; padding: 10px 12px;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.order-item-name { flex: 1; font-size: 13px; font-weight: 500; }
+.order-item-size { font-size: 11px; color: var(--text3); }
+.order-item-price { font-size: 13px; color: var(--gold); font-weight: 600; white-space: nowrap; }
+.qty-ctrl { display: flex; align-items: center; gap: 6px; }
+.qty-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface3); color: var(--text); cursor: pointer;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.qty-btn:hover { border-color: var(--gold); color: var(--gold); }
+.qty-num { font-size: 14px; font-weight: 600; min-width: 20px; text-align: center; }
+.order-footer { padding: 16px; border-top: 1px solid var(--border); }
+.order-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.order-total-label { font-size: 13px; color: var(--text2); }
+.order-total-amount { font-size: 22px; font-weight: 700; color: var(--gold2); }
+.order-actions { display: flex; gap: 8px; }
+
+/* ─── MENU ITEMS ─── */
+.menu-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px; margin-top: 12px;
+}
+.menu-item {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 10px; cursor: pointer;
+  text-align: center; transition: all .2s;
+}
+.menu-item:hover { border-color: var(--gold); transform: translateY(-2px); }
+.menu-item-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.menu-item-price { font-size: 12px; color: var(--gold); }
+.menu-item-size { font-size: 10px; color: var(--text3); }
+
+/* ─── TOPPING ─── */
+.topping-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.topping-chip {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  cursor: pointer; font-size: 12px; color: var(--text2); transition: all .2s;
+  user-select: none;
+}
+.topping-chip.selected { background: var(--gold); color: #1a1000; border-color: var(--gold); }
+.topping-chip:hover:not(.selected) { border-color: var(--gold); color: var(--gold); }
+
+/* ─── RECEIPT ─── */
+@media print {
+  body > *:not(#receipt-print) { display: none !important; }
+  #receipt-print { display: block !important; }
+}
+#receipt-print {
+  display: none;
+  font-family: 'Courier New', monospace; font-size: 12px;
+  width: 280px; margin: 0 auto; padding: 8px;
+}
+
+/* ─── MERGE DRAG ─── */
+.drop-zone { outline: 2px dashed var(--gold2); }
+
+/* ─── STATS ─── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.stat-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--cream); margin-top: 4px; }
+.stat-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ─── MOBILE ─── */
+.hamburger {
+  display: none; position: fixed; top: 12px; left: 12px; z-index: 300;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 20px;
+}
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99;
+}
+
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop.show { display: block; }
+  .hamburger { display: block; }
+  .main-content { margin-left: 0; padding: 16px; padding-top: 56px; }
+  .order-panel { width: 100%; }
+  .page-title { font-size: 20px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .form-row { flex-direction: column; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Spinner */
+.spinner {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite;
+  margin: 40px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty { text-align: center; color: var(--text3); padding: 40px; }
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- ─── LOGIN ─── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>☕ CaféShop</h1>
+      <p>Point of Sale System</p>
+    </div>
+    <div class="form-group">
+      <label>Tên đăng nhập</label>
+      <div class="input-wrap">
+        <input type="text" id="login-user" placeholder="admin hoặc tên tài khoản">
+        <span class="input-suffix" id="domain-hint"></span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Mật khẩu</label>
+      <div class="input-wrap">
+        <input type="password" id="login-pass" placeholder="••••••••">
+      </div>
+    </div>
+    <button class="btn btn-gold" onclick="doLogin()">Đăng nhập</button>
+  </div>
+</div>
+
+<!-- ─── APP ─── -->
+<div id="app">
+  <button class="hamburger" onclick="toggleSidebar()">☰</button>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h2 id="shop-name-sidebar">☕ CaféShop</h2>
+      <p id="shop-addr-sidebar"></p>
+    </div>
+    <nav id="nav-menu"></nav>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="user-display"></div>
+        <div class="user-role" id="user-role-badge"></div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()" title="Đăng xuất">⏻</button>
+    </div>
+  </div>
+
+  <div class="main-content" id="main-content"></div>
+</div>
+
+<!-- ─── ORDER PANEL ─── -->
+<div class="order-panel" id="order-panel">
+  <div class="order-header">
+    <div>
+      <div class="order-title" id="order-table-label">Bàn --</div>
+      <div style="font-size:11px;color:var(--text3)" id="order-merged-info"></div>
+    </div>
+    <button class="btn btn-sm btn-outline" onclick="closeOrderPanel()">✕</button>
+  </div>
+  <div class="order-body" id="order-body"></div>
+  <div class="order-footer">
+    <div class="order-total-row">
+      <span class="order-total-label">Tổng cộng</span>
+      <span class="order-total-amount" id="order-total">0 ₫</span>
+    </div>
+    <div class="order-actions">
+      <button class="btn btn-sm btn-outline" onclick="openMergeModal()" title="Gộp bàn">🔗</button>
+      <button class="btn btn-sm btn-gold" style="flex:1" onclick="openMenuModal()">+ Thêm món</button>
+      <button class="btn btn-sm btn-green" onclick="openCheckoutModal()">💳 Tính tiền</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── RECEIPT PRINT ─── -->
+<div id="receipt-print"></div>
+
+<!-- ─── MODALS ─── -->
+<div id="modal-container"></div>
+
+<script>
+// ─── GLOBAL STATE ───
+let currentUser = null;
+let isAdmin = false;
+let shopConfig = {};
+let groups = [];
+let items = [];
+let tables = [];
+let orders = {}; // tableId -> {items, staff, mergedWith, mergedFrom}
+let toppingGroup = null;
+let currentTableId = null;
+
+const ADMIN_EMAIL = 'admin@myapp.com';
+const DOMAIN = '@myapp.com';
+const TABLE_COUNT = 20;
+
+// ─── INIT ───
+window.addEventListener('firebase-ready', () => {
+  const { onAuthStateChanged } = window._fbFns;
+  const auth = window._auth;
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      currentUser = user;
+      isAdmin = user.email === ADMIN_EMAIL;
+      await loadData();
+      showApp();
+    } else {
+      currentUser = null;
+      isAdmin = false;
+      showLogin();
+    }
+  });
+});
+
+// auto-fill domain
+document.getElementById('login-user').addEventListener('input', e => {
+  const val = e.target.value.trim();
+  const hint = document.getElementById('domain-hint');
+  if (val && !val.includes('@')) hint.textContent = DOMAIN;
+  else hint.textContent = '';
+});
+
+// ─── AUTH ───
+async function doLogin() {
+  let user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!user || !pass) return toast('Vui lòng nhập đầy đủ', 'error');
+  if (!user.includes('@')) user = user + DOMAIN;
+  try {
+    const { signInWithEmailAndPassword } = window._fbFns;
+    await signInWithEmailAndPassword(window._auth, user, pass);
+  } catch (e) {
+    toast('Sai tài khoản hoặc mật khẩu', 'error');
+  }
+}
+
+async function doLogout() {
+  const { signOut } = window._fbFns;
+  await signOut(window._auth);
+}
+
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('login-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-pass').focus();
+});
+
+// ─── DATA LOAD ───
+async function loadData() {
+  const { doc, getDoc, collection, getDocs, onSnapshot, query, orderBy } = window._fbFns;
+  const db = window._db;
+
+  // Shop config
+  const cfgDoc = await getDoc(doc(db, 'config', 'shop'));
+  if (cfgDoc.exists()) shopConfig = cfgDoc.data();
+
+  // Groups & items
+  const groupSnap = await getDocs(query(collection(db, 'groups'), orderBy('order', 'asc')));
+  groups = groupSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const itemSnap = await getDocs(collection(db, 'items'));
+  items = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Find topping group
+  toppingGroup = groups.find(g => g.name && g.name.toLowerCase() === 'topping');
+
+  // Orders realtime
+  onSnapshot(collection(db, 'orders'), snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'removed') {
+        delete orders[change.doc.id];
+      } else {
+        orders[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
+      }
+    });
+    refreshTablesUI();
+    if (currentTableId && document.getElementById('order-panel').classList.contains('open')) {
+      renderOrderPanel(currentTableId);
+    }
+  });
+}
+
+// ─── SHOW/HIDE ───
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  buildNav();
+  updateUserUI();
+  updateShopUI();
+  if (isAdmin) navigateTo('dashboard');
+  else navigateTo('pos');
+}
+
+function updateShopUI() {
+  document.getElementById('shop-name-sidebar').textContent = (shopConfig.name || 'CaféShop');
+  document.getElementById('shop-addr-sidebar').textContent = shopConfig.address || '';
+}
+
+function updateUserUI() {
+  const email = currentUser.email;
+  const name = email.split('@')[0];
+  document.getElementById('user-display').textContent = name;
+  document.getElementById('user-role-badge').textContent = isAdmin ? '👑 Admin' : '🧑 Nhân viên';
+  document.getElementById('user-avatar').textContent = name[0].toUpperCase();
+}
+
+// ─── NAV ───
+const ADMIN_PAGES = [
+  { id: 'dashboard', icon: '📊', label: 'Tổng quan' },
+  { id: 'config', icon: '⚙️', label: 'Cấu hình quán' },
+  { id: 'staff', icon: '👥', label: 'Quản lý nhân viên' },
+  { id: 'menu', icon: '🍽️', label: 'Quản lý món' },
+  { id: 'pos', icon: '🧾', label: 'Bán hàng' },
+];
+const STAFF_PAGES = [
+  { id: 'pos', icon: '🧾', label: 'Bán hàng' },
+];
+
+function buildNav() {
+  const pages = isAdmin ? ADMIN_PAGES : STAFF_PAGES;
+  const nav = document.getElementById('nav-menu');
+  nav.innerHTML = pages.map(p => `
+    <div class="nav-item" id="nav-${p.id}" onclick="navigateTo('${p.id}')">
+      <span class="nav-icon">${p.icon}</span>${p.label}
+    </div>
+  `).join('');
+}
+
+let currentPage = '';
+function navigateTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('nav-' + page);
+  if (el) el.classList.add('active');
+  closeSidebar();
+  const mc = document.getElementById('main-content');
+  mc.innerHTML = '<div class="spinner"></div>';
+  setTimeout(() => {
+    if (page === 'dashboard') renderDashboard();
+    else if (page === 'config') renderConfig();
+    else if (page === 'staff') renderStaff();
+    else if (page === 'menu') renderMenu();
+    else if (page === 'pos') renderPOS();
+  }, 100);
+}
+
+// ─── SIDEBAR MOBILE ───
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-backdrop').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('show');
+}
+
+// ─── TOAST ───
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── MODAL ───
+function openModal(html) {
+  const mc = document.getElementById('modal-container');
+  mc.innerHTML = `<div class="modal-overlay" onclick="closeModal(event)">${html}</div>`;
+}
+function closeModal(e) {
+  if (!e || e.target === e.currentTarget) {
+    document.getElementById('modal-container').innerHTML = '';
+  }
+}
+
+// ─── FORMAT ───
+function fmtMoney(n) {
+  return Number(n || 0).toLocaleString('vi-VN') + ' ₫';
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard() {
+  let totalRevenue = 0, totalOrders = 0;
+  const now = new Date();
+  const todayStr = now.toLocaleDateString('vi-VN');
+  // We read from orders (active tables - not historical), just show open tables
+  const openTables = Object.values(orders).length;
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="page-header">
+      <div><h2 class="page-title">Tổng quan</h2><div class="page-sub">${todayStr}</div></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Bàn đang dùng</div>
+        <div class="stat-value">${openTables}</div>
+        <div class="stat-sub">/ ${TABLE_COUNT} bàn</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tổng nhóm món</div>
+        <div class="stat-value">${groups.length}</div>
+        <div class="stat-sub">nhóm sản phẩm</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tổng món</div>
+        <div class="stat-value">${items.length}</div>
+        <div class="stat-sub">sản phẩm</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hệ thống</div>
+        <div class="stat-value" style="font-size:18px">✅</div>
+        <div class="stat-sub">Hoạt động bình thường</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🛎️ Bàn đang có khách</div>
+      <div id="dash-tables"></div>
+    </div>
+  `;
+
+  const dt = document.getElementById('dash-tables');
+  const occupied = Object.values(orders);
+  if (!occupied.length) { dt.innerHTML = '<div class="empty">Chưa có bàn nào đang phục vụ</div>'; return; }
+  dt.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Bàn</th><th>Nhân viên</th><th>Số món</th><th>Tổng tiền</th><th>Gộp với</th></tr></thead>
+    <tbody>${occupied.map(o => {
+      const total = calcOrderTotal(o);
+      return `<tr>
+        <td>🪑 Bàn ${o.tableId}</td>
+        <td>${o.staffEmail || ''}</td>
+        <td>${(o.items||[]).length} món</td>
+        <td style="color:var(--gold)">${fmtMoney(total)}</td>
+        <td>${o.mergedWith ? 'Gộp bàn ' + o.mergedWith.join(', ') : '-'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+function renderConfig() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="page-header">
+      <div><h2 class="page-title">Cấu hình quán</h2></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏪 Thông tin quán</div>
+      <div class="field"><label>Tên quán</label><input id="cfg-name" value="${shopConfig.name||''}" placeholder="Tên quán café"></div>
+      <div class="field"><label>Địa chỉ</label><input id="cfg-addr" value="${shopConfig.address||''}" placeholder="Số nhà, đường, phường..."></div>
+      <div class="field"><label>Số điện thoại</label><input id="cfg-phone" value="${shopConfig.phone||''}" placeholder="0901234567"></div>
+      <div class="field"><label>Lời chào hóa đơn</label><input id="cfg-footer" value="${shopConfig.footer||'Cảm ơn quý khách!'}" placeholder="Cảm ơn quý khách!"></div>
+      <button class="btn btn-gold btn-sm" onclick="saveConfig()">💾 Lưu cấu hình</button>
+    </div>
+  `;
+}
+
+async function saveConfig() {
+  const { doc, setDoc } = window._fbFns;
+  shopConfig = {
+    name: document.getElementById('cfg-name').value.trim(),
+    address: document.getElementById('cfg-addr').value.trim(),
+    phone: document.getElementById('cfg-phone').value.trim(),
+    footer: document.getElementById('cfg-footer').value.trim(),
+  };
+  await setDoc(doc(window._db, 'config', 'shop'), shopConfig);
+  updateShopUI();
+  toast('Đã lưu cấu hình quán!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// STAFF
+// ═══════════════════════════════════════════
+function renderStaff() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="page-header">
+      <div><h2 class="page-title">Quản lý nhân viên</h2></div>
+      <button class="btn btn-gold btn-sm" onclick="openAddStaffModal()">+ Thêm nhân viên</button>
+    </div>
+    <div class="card">
+      <div class="card-title">👥 Danh sách tài khoản</div>
+      <p style="color:var(--text3);font-size:13px;margin-bottom:16px">
+        Tài khoản nhân viên được tạo trực tiếp trong Firebase Authentication.<br>
+        Nhân viên đăng nhập bằng tên (không cần gõ @myapp.com).
+      </p>
+      <button class="btn btn-gold btn-sm" onclick="openAddStaffModal()">➕ Tạo tài khoản nhân viên mới</button>
+    </div>
+  `;
+}
+
+function openAddStaffModal() {
+  openModal(`
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title">
+        <h3>Thêm nhân viên</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="field"><label>Tên đăng nhập</label>
+        <div class="input-wrap">
+          <input id="staff-user" placeholder="nguyenvan">
+          <span class="input-suffix">${DOMAIN}</span>
+        </div>
+      </div>
+      <div class="field"><label>Mật khẩu</label><input type="password" id="staff-pass" placeholder="Tối thiểu 6 ký tự"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-gold btn-sm" onclick="addStaff()">Tạo tài khoản</button>
+      </div>
+    </div>
+  `);
+}
+
+async function addStaff() {
+  let user = document.getElementById('staff-user').value.trim();
+  const pass = document.getElementById('staff-pass').value;
+  if (!user) return toast('Nhập tên đăng nhập', 'error');
+  if (pass.length < 6) return toast('Mật khẩu tối thiểu 6 ký tự', 'error');
+  if (!user.includes('@')) user = user + DOMAIN;
+  try {
+    const { createUserWithEmailAndPassword } = window._fbFns;
+    // Create secondary auth (won't log out current admin)
+    const { initializeApp, getApps } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const { getAuth } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    const secondaryApp = initializeApp(window._app.options, 'secondary_' + Date.now());
+    const secondaryAuth = getAuth(secondaryApp);
+    await createUserWithEmailAndPassword(secondaryAuth, user, pass);
+    await secondaryAuth.signOut();
+    closeModal();
+    toast(`Đã tạo tài khoản: ${user}`, 'success');
+  } catch(e) {
+    toast('Lỗi: ' + (e.message || e), 'error');
+  }
+}
+
+// ═══════════════════════════════════════════
+// MENU MANAGEMENT
+// ═══════════════════════════════════════════
+let menuTab = 'groups';
+function renderMenu() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="page-header">
+      <div><h2 class="page-title">Quản lý món</h2></div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${menuTab==='groups'?'active':''}" onclick="switchMenuTab('groups')">Nhóm món</div>
+      <div class="tab ${menuTab==='items'?'active':''}" onclick="switchMenuTab('items')">Danh sách món</div>
+    </div>
+    <div id="menu-body"></div>
+  `;
+  renderMenuBody();
+}
+
+function switchMenuTab(tab) {
+  menuTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderMenuBody();
+}
+
+function renderMenuBody() {
+  const el = document.getElementById('menu-body');
+  if (menuTab === 'groups') {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">📦 Nhóm món <button class="btn btn-gold btn-sm" onclick="openGroupModal()" style="margin-left:auto">+ Thêm nhóm</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tên nhóm</th><th>Thứ tự</th><th>Ghi chú</th><th></th></tr></thead>
+          <tbody>${groups.map(g => `<tr>
+            <td>${g.name}${g.name&&g.name.toLowerCase()==='topping'?'  <span class="tag tag-blue">Topping đặc biệt</span>':''}</td>
+            <td>${g.order||0}</td>
+            <td>${g.note||''}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteGroup('${g.id}')">🗑</button></td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">🍽️ Danh sách món <button class="btn btn-gold btn-sm" onclick="openItemModal()" style="margin-left:auto">+ Thêm món</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Tên món</th><th>Nhóm</th><th>Size</th><th>Giá</th><th></th></tr></thead>
+          <tbody>${items.map(it => `<tr>
+            <td>${it.name}</td>
+            <td>${groups.find(g=>g.id===it.groupId)?.name||'-'}</td>
+            <td>${it.size||'-'}</td>
+            <td style="color:var(--gold)">${fmtMoney(it.price)}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteItem('${it.id}')">🗑</button></td>
+          </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>
+    `;
+  }
+}
+
+function openGroupModal() {
+  openModal(`
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title"><h3>Thêm nhóm món</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="field"><label>Tên nhóm</label><input id="grp-name" placeholder="VD: Cà phê, Trà sữa, Topping..."></div>
+      <div class="field"><label>Thứ tự hiển thị</label><input type="number" id="grp-order" value="0"></div>
+      <div class="field"><label>Ghi chú</label><input id="grp-note" placeholder="(tuỳ chọn)"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-gold btn-sm" onclick="addGroup()">Lưu</button>
+      </div>
+    </div>
+  `);
+}
+
+async function addGroup() {
+  const name = document.getElementById('grp-name').value.trim();
+  if (!name) return toast('Nhập tên nhóm', 'error');
+  const { collection, addDoc } = window._fbFns;
+  const ref = await addDoc(collection(window._db, 'groups'), {
+    name, order: parseInt(document.getElementById('grp-order').value)||0,
+    note: document.getElementById('grp-note').value.trim()
+  });
+  groups.push({ id: ref.id, name, order: 0 });
+  if (name.toLowerCase() === 'topping') toppingGroup = groups[groups.length-1];
+  closeModal();
+  toast('Đã thêm nhóm: ' + name, 'success');
+  renderMenuBody();
+}
+
+async function deleteGroup(id) {
+  if (!confirm('Xoá nhóm này? Các món trong nhóm sẽ mất nhóm.')) return;
+  const { doc, deleteDoc } = window._fbFns;
+  await deleteDoc(doc(window._db, 'groups', id));
+  groups = groups.filter(g => g.id !== id);
+  renderMenuBody();
+  toast('Đã xoá nhóm', 'success');
+}
+
+function openItemModal() {
+  const nonTopping = groups.filter(g => !g.name || g.name.toLowerCase() !== 'topping');
+  openModal(`
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title"><h3>Thêm món</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="field"><label>Tên món</label><input id="item-name" placeholder="VD: Cà phê đen, Trà đào..."></div>
+      <div class="field"><label>Nhóm</label>
+        <select id="item-group">
+          <option value="">-- Chọn nhóm --</option>
+          ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Size (tuỳ chọn)</label><input id="item-size" placeholder="VD: S, M, L hoặc Nhỏ, Vừa..."></div>
+      <div class="field"><label>Giá (₫)</label><input type="number" id="item-price" placeholder="25000"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-gold btn-sm" onclick="addItem()">Lưu</button>
+      </div>
+    </div>
+  `);
+}
+
+async function addItem() {
+  const name = document.getElementById('item-name').value.trim();
+  const groupId = document.getElementById('item-group').value;
+  const price = parseInt(document.getElementById('item-price').value) || 0;
+  const size = document.getElementById('item-size').value.trim();
+  if (!name || !groupId || !price) return toast('Nhập đầy đủ thông tin', 'error');
+  const { collection, addDoc } = window._fbFns;
+  const ref = await addDoc(collection(window._db, 'items'), { name, groupId, price, size });
+  items.push({ id: ref.id, name, groupId, price, size });
+  closeModal();
+  toast('Đã thêm món: ' + name, 'success');
+  renderMenuBody();
+}
+
+async function deleteItem(id) {
+  if (!confirm('Xoá món này?')) return;
+  const { doc, deleteDoc } = window._fbFns;
+  await deleteDoc(doc(window._db, 'items', id));
+  items = items.filter(i => i.id !== id);
+  renderMenuBody();
+  toast('Đã xoá món', 'success');
+}
+
+// ═══════════════════════════════════════════
+// POS
+// ═══════════════════════════════════════════
+function renderPOS() {
+  let html = `
+    <div class="page-header">
+      <div><h2 class="page-title">🧾 Bán hàng</h2><div class="page-sub">Chọn bàn để bắt đầu order</div></div>
+      <button class="btn btn-gold btn-sm" onclick="navigateTo('pos')">🔄 Làm mới</button>
+    </div>
+    <div class="tables-grid" id="tables-grid"></div>
+  `;
+  document.getElementById('main-content').innerHTML = html;
+  refreshTablesUI();
+}
+
+function refreshTablesUI() {
+  const grid = document.getElementById('tables-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 1; i <= TABLE_COUNT; i++) {
+    const tableId = 't' + i;
+    const order = orders[tableId];
+    const isMergedSlave = Object.values(orders).some(o => o.mergedWith && o.mergedWith.includes(tableId));
+    const isOccupied = !!order;
+    const isMerged = order && order.mergedWith && order.mergedWith.length > 0;
+    const isSelected = tableId === currentTableId;
+    const total = order ? calcOrderTotal(order) : 0;
+
+    const card = document.createElement('div');
+    card.className = 'table-card' +
+      (isOccupied ? ' occupied' : '') +
+      (isSelected ? ' selected' : '') +
+      (isMerged || isMergedSlave ? ' merged' : '');
+    card.id = 'tc-' + tableId;
+    card.draggable = true;
+    card.dataset.tableId = tableId;
+
+    card.innerHTML = `
+      ${isMerged ? `<div class="merge-badge">🔗${order.mergedWith.length+1}</div>` : ''}
+      ${isMergedSlave ? `<div class="merge-badge" style="background:var(--text3)">↗</div>` : ''}
+      <div class="table-num">${i}</div>
+      <div class="table-status">${isMergedSlave ? 'Đã gộp' : isOccupied ? 'Có khách' : 'Trống'}</div>
+      ${isOccupied && !isMergedSlave ? `
+        <div class="table-amount">${fmtMoney(total)}</div>
+        <div class="table-staff">${order.staffEmail ? order.staffEmail.split('@')[0] : ''}</div>
+      ` : ''}
+      ${!isOccupied && !isMergedSlave ? '<div class="table-drag-hint" style="font-size:10px">Nhấn để order</div>' : ''}
+    `;
+
+    card.addEventListener('click', () => {
+      if (isMergedSlave) {
+        // find master
+        const master = Object.values(orders).find(o => o.mergedWith && o.mergedWith.includes(tableId));
+        if (master) { selectTable(master.tableId); return; }
+      }
+      selectTable(tableId);
+    });
+
+    // Drag to merge
+    card.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', tableId);
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      card.classList.add('drop-zone');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drop-zone'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drop-zone');
+      const fromId = e.dataTransfer.getData('text/plain');
+      if (fromId && fromId !== tableId) mergeTablesPrompt(fromId, tableId);
+    });
+
+    grid.appendChild(card);
+  }
+}
+
+function selectTable(tableId) {
+  currentTableId = tableId;
+  openOrderPanel(tableId);
+}
+
+function calcOrderTotal(order) {
+  if (!order || !order.items) return 0;
+  return order.items.reduce((s, it) => s + (it.price * (it.qty || 1)), 0);
+}
+
+// ─── ORDER PANEL ───
+function openOrderPanel(tableId) {
+  currentTableId = tableId;
+  document.getElementById('order-panel').classList.add('open');
+  renderOrderPanel(tableId);
+  refreshTablesUI();
+}
+
+function closeOrderPanel() {
+  document.getElementById('order-panel').classList.remove('open');
+  currentTableId = null;
+  refreshTablesUI();
+}
+
+function renderOrderPanel(tableId) {
+  const order = orders[tableId];
+  const num = tableId.replace('t','');
+  document.getElementById('order-table-label').textContent = `🪑 Bàn ${num}`;
+
+  // Merged info
+  const mergeInfo = document.getElementById('order-merged-info');
+  if (order && order.mergedWith && order.mergedWith.length) {
+    const nums = order.mergedWith.map(id => 'Bàn ' + id.replace('t','')).join(', ');
+    mergeInfo.textContent = `🔗 Gộp với: ${nums}`;
+  } else {
+    mergeInfo.textContent = '';
+  }
+
+  const body = document.getElementById('order-body');
+  if (!order || !order.items || !order.items.length) {
+    body.innerHTML = '<div class="empty">Chưa có món nào<br>Nhấn "+ Thêm món"</div>';
+    document.getElementById('order-total').textContent = '0 ₫';
+    return;
+  }
+
+  body.innerHTML = order.items.map((it, idx) => `
+    <div class="order-item">
+      <div style="flex:1;min-width:0">
+        <div class="order-item-name">${it.name}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px">
+          ${it.size ? `<span class="order-item-size">📏 ${it.size}</span>` : ''}
+          ${(it.toppings||[]).length ? `<span class="order-item-size">🫧 ${it.toppings.join(', ')}</span>` : ''}
+        </div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${tableId}',${idx},-1)">−</button>
+        <span class="qty-num">${it.qty||1}</span>
+        <button class="qty-btn" onclick="changeQty('${tableId}',${idx},1)">+</button>
+      </div>
+      <div style="text-align:right">
+        <div class="order-item-price">${fmtMoney(it.price * (it.qty||1))}</div>
+        <button class="btn btn-sm btn-danger" style="padding:3px 8px;font-size:11px;margin-top:4px" onclick="removeItem('${tableId}',${idx})">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('order-total').textContent = fmtMoney(calcOrderTotal(order));
+}
+
+async function changeQty(tableId, idx, delta) {
+  const order = orders[tableId];
+  if (!order) return;
+  order.items[idx].qty = Math.max(1, (order.items[idx].qty||1) + delta);
+  await saveOrder(tableId, order);
+}
+
+async function removeItem(tableId, idx) {
+  const order = orders[tableId];
+  if (!order) return;
+  order.items.splice(idx, 1);
+  await saveOrder(tableId, order);
+}
+
+async function saveOrder(tableId, orderData) {
+  const { doc, setDoc, serverTimestamp } = window._fbFns;
+  const data = {
+    tableId,
+    items: orderData.items || [],
+    staffEmail: orderData.staffEmail || currentUser.email,
+    staffName: orderData.staffName || currentUser.email.split('@')[0],
+    mergedWith: orderData.mergedWith || [],
+    mergedFrom: orderData.mergedFrom || [],
+    updatedAt: serverTimestamp(),
+    createdAt: orderData.createdAt || serverTimestamp(),
+  };
+  await setDoc(doc(window._db, 'orders', tableId), data);
+}
+
+// ─── MENU MODAL (add items) ───
+let selectedToppings = [];
+function openMenuModal() {
+  if (!currentTableId) return toast('Chọn bàn trước', 'error');
+  selectedToppings = [];
+  const nonToppingGroups = groups.filter(g => !g.name || g.name.toLowerCase() !== 'topping');
+  const toppings = toppingGroup ? items.filter(i => i.groupId === toppingGroup.id) : [];
+
+  let groupTabsHtml = nonToppingGroups.map((g,i) =>
+    `<div class="tab ${i===0?'active':''}" onclick="switchMenuGroup('${g.id}',this)">${g.name}</div>`
+  ).join('');
+
+  let toppingHtml = toppings.length ? `
+    <div style="margin-top:16px">
+      <div class="card-title" style="font-size:13px;margin-bottom:8px">🫧 Topping (kéo chọn)</div>
+      <div class="topping-list" id="topping-list">
+        ${toppings.map(t => `
+          <div class="topping-chip" onclick="toggleTopping('${t.name}',this)">${t.name} <span style="color:var(--gold)">${fmtMoney(t.price)}</span></div>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  openModal(`
+    <div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
+      <div class="modal-title"><h3>Thêm món</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      ${nonToppingGroups.length ? `
+        <div class="tabs" style="flex-wrap:wrap">${groupTabsHtml}</div>
+        <div id="menu-items-grid"></div>
+        ${toppingHtml}
+      ` : '<div class="empty">Chưa có món nào. Vào Quản lý món để thêm.</div>'}
+    </div>
+  `);
+  if (nonToppingGroups.length) switchMenuGroup(nonToppingGroups[0].id, null);
+}
+
+function switchMenuGroup(groupId, tabEl) {
+  if (tabEl) {
+    document.querySelectorAll('.modal .tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+  }
+  const groupItems = items.filter(i => i.groupId === groupId);
+  const grid = document.getElementById('menu-items-grid');
+  if (!grid) return;
+  if (!groupItems.length) { grid.innerHTML = '<div class="empty">Nhóm này chưa có món</div>'; return; }
+  grid.innerHTML = `<div class="menu-grid">${groupItems.map(it => `
+    <div class="menu-item" onclick="addToOrder('${it.id}')">
+      <div class="menu-item-name">${it.name}</div>
+      ${it.size ? `<div class="menu-item-size">${it.size}</div>` : ''}
+      <div class="menu-item-price">${fmtMoney(it.price)}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function toggleTopping(name, el) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) selectedToppings.push(name);
+  else selectedToppings = selectedToppings.filter(t => t !== name);
+}
+
+async function addToOrder(itemId) {
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  const tableId = currentTableId;
+  const existingOrder = orders[tableId] || { tableId, items: [], staffEmail: currentUser.email, staffName: currentUser.email.split('@')[0], mergedWith: [], mergedFrom: [] };
+  const toppingCost = selectedToppings.reduce((s, tName) => {
+    const t = items.find(i => i.name === tName && i.groupId === (toppingGroup&&toppingGroup.id));
+    return s + (t ? t.price : 0);
+  }, 0);
+  existingOrder.items = existingOrder.items || [];
+  existingOrder.items.push({
+    itemId,
+    name: item.name + (selectedToppings.length ? '' : ''),
+    size: item.size || '',
+    price: item.price + toppingCost,
+    basePrice: item.price,
+    toppings: [...selectedToppings],
+    qty: 1,
+  });
+  await saveOrder(tableId, existingOrder);
+  toast(`Đã thêm: ${item.name}`, 'success');
+  selectedToppings = [];
+  document.querySelectorAll('.topping-chip.selected').forEach(el => el.classList.remove('selected'));
+}
+
+// ─── MERGE ───
+function openMergeModal() {
+  if (!currentTableId) return;
+  const occupied = Object.values(orders)
+    .filter(o => o.tableId !== currentTableId && !( (orders[currentTableId]&&orders[currentTableId].mergedWith||[]).includes(o.tableId) ))
+    .map(o => o.tableId);
+
+  const allTables = [];
+  for (let i = 1; i <= TABLE_COUNT; i++) {
+    const id = 't' + i;
+    if (id !== currentTableId) allTables.push(id);
+  }
+
+  openModal(`
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title"><h3>🔗 Gộp bàn</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Chọn bàn muốn gộp vào Bàn ${currentTableId.replace('t','')}:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        ${allTables.map(id => {
+          const num = id.replace('t','');
+          const hasOrder = !!orders[id];
+          return `<div class="topping-chip ${hasOrder?'':''}${occupied.includes(id)?'selected':''}" 
+            onclick="toggleMergeSelect('${id}',this)" id="ms-${id}">
+            Bàn ${num}${hasOrder?' 🟢':''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-gold btn-sm" onclick="doMerge()">Gộp bàn</button>
+        ${orders[currentTableId]&&orders[currentTableId].mergedWith&&orders[currentTableId].mergedWith.length?
+          `<button class="btn btn-danger btn-sm" onclick="doUnmerge()">Tách bàn</button>` : ''}
+      </div>
+    </div>
+  `);
+  // pre-select already merged
+  if (orders[currentTableId] && orders[currentTableId].mergedWith) {
+    orders[currentTableId].mergedWith.forEach(id => {
+      const el = document.getElementById('ms-' + id);
+      if (el) el.classList.add('selected');
+    });
+  }
+}
+
+let mergeSelections = [];
+function toggleMergeSelect(id, el) {
+  el.classList.toggle('selected');
+}
+
+async function doMerge() {
+  const selected = Array.from(document.querySelectorAll('[id^="ms-"].selected')).map(el => el.id.replace('ms-',''));
+  if (!selected.length) return toast('Chọn ít nhất 1 bàn', 'error');
+  const { doc, setDoc, serverTimestamp } = window._fbFns;
+
+  const masterOrder = orders[currentTableId] || {
+    tableId: currentTableId, items: [], staffEmail: currentUser.email, staffName: currentUser.email.split('@')[0],
+  };
+  masterOrder.mergedWith = selected;
+  masterOrder.mergeLog = masterOrder.mergeLog || [];
+  masterOrder.mergeLog.push({
+    action: 'merge', tables: selected, by: currentUser.email, at: new Date().toISOString()
+  });
+
+  await saveOrder(currentTableId, masterOrder);
+  toast(`Đã gộp bàn ${selected.map(id=>'Bàn '+id.replace('t','')).join(', ')} vào Bàn ${currentTableId.replace('t','')}`, 'success');
+  closeModal();
+  renderOrderPanel(currentTableId);
+}
+
+async function doUnmerge() {
+  if (!orders[currentTableId]) return;
+  const log = orders[currentTableId].mergeLog || [];
+  log.push({ action: 'unmerge', tables: orders[currentTableId].mergedWith, by: currentUser.email, at: new Date().toISOString() });
+  orders[currentTableId].mergedWith = [];
+  orders[currentTableId].mergeLog = log;
+  await saveOrder(currentTableId, orders[currentTableId]);
+  toast('Đã tách bàn', 'success');
+  closeModal();
+  renderOrderPanel(currentTableId);
+}
+
+function mergeTablesPrompt(fromId, toId) {
+  const fromNum = fromId.replace('t','');
+  const toNum = toId.replace('t','');
+  if (confirm(`Gộp Bàn ${fromNum} vào Bàn ${toNum}?`)) {
+    // Move items from from to to
+    const masterOrder = orders[toId] || { tableId: toId, items: [], staffEmail: currentUser.email, staffName: currentUser.email.split('@')[0], mergedWith: [], mergedFrom: [] };
+    const slaveOrder = orders[fromId];
+    if (slaveOrder && slaveOrder.items) {
+      masterOrder.items = [...(masterOrder.items||[]), ...slaveOrder.items];
+    }
+    masterOrder.mergedWith = [...(masterOrder.mergedWith||[])];
+    if (!masterOrder.mergedWith.includes(fromId)) masterOrder.mergedWith.push(fromId);
+    masterOrder.mergeLog = masterOrder.mergeLog || [];
+    masterOrder.mergeLog.push({ action: 'drag-merge', from: fromId, by: currentUser.email, at: new Date().toISOString() });
+    saveOrder(toId, masterOrder);
+    toast(`Đã gộp Bàn ${fromNum} → Bàn ${toNum}`, 'success');
+  }
+}
+
+// ─── CHECKOUT ───
+function openCheckoutModal() {
+  if (!currentTableId) return;
+  const order = orders[currentTableId];
+  if (!order || !order.items || !order.items.length) return toast('Chưa có món', 'error');
+  const total = calcOrderTotal(order);
+  openModal(`
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-title"><h3>💳 Tính tiền - Bàn ${currentTableId.replace('t','')}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div style="margin-bottom:16px">
+        ${order.items.map(it => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span>${it.name}${it.size?' ('+it.size+')':''}${it.toppings&&it.toppings.length?' +'+it.toppings.join(','):''}  ×${it.qty||1}</span>
+            <span style="color:var(--gold)">${fmtMoney(it.price*(it.qty||1))}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;color:var(--gold2);margin-bottom:20px">
+        <span>Tổng cộng</span><span>${fmtMoney(total)}</span>
+      </div>
+      <div class="field"><label>Tiền khách đưa (₫)</label><input type="number" id="cash-given" placeholder="${total}" oninput="calcChange(${total})"></div>
+      <div id="change-display" style="font-size:15px;color:var(--green);margin-bottom:16px;font-weight:600"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-blue btn-sm" onclick="printReceipt()">🖨️ In hóa đơn</button>
+        <button class="btn btn-green btn-sm" onclick="doCheckout()">✅ Thanh toán</button>
+      </div>
+    </div>
+  `);
+}
+
+function calcChange(total) {
+  const given = parseInt(document.getElementById('cash-given').value) || 0;
+  const change = given - total;
+  document.getElementById('change-display').textContent = change >= 0 ? `Tiền thừa: ${fmtMoney(change)}` : `Còn thiếu: ${fmtMoney(-change)}`;
+}
+
+async function doCheckout() {
+  if (!currentTableId) return;
+  const order = orders[currentTableId];
+  if (!order) return;
+  // Archive to history
+  const { collection, addDoc, doc, deleteDoc, serverTimestamp } = window._fbFns;
+  await addDoc(collection(window._db, 'history'), {
+    ...order,
+    total: calcOrderTotal(order),
+    closedAt: serverTimestamp(),
+    closedBy: currentUser.email,
+  });
+  // Delete merged tables' orders too
+  if (order.mergedWith && order.mergedWith.length) {
+    for (const id of order.mergedWith) {
+      if (orders[id]) await deleteDoc(doc(window._db, 'orders', id));
+    }
+  }
+  await deleteDoc(doc(window._db, 'orders', currentTableId));
+  closeModal();
+  closeOrderPanel();
+  toast('✅ Đã thanh toán! Bàn đã được giải phóng.', 'success');
+}
+
+function printReceipt() {
+  if (!currentTableId) return;
+  const order = orders[currentTableId];
+  if (!order) return;
+  const total = calcOrderTotal(order);
+  const shop = shopConfig;
+  const now = new Date().toLocaleString('vi-VN');
+  const tableNum = currentTableId.replace('t','');
+
+  const el = document.getElementById('receipt-print');
+  el.innerHTML = `
+    <div style="text-align:center;margin-bottom:8px">
+      <strong style="font-size:16px">${shop.name||'CaféShop'}</strong><br>
+      ${shop.address||''}<br>
+      ${shop.phone||''}<br>
+      <hr style="border:1px dashed #000;margin:6px 0">
+      HOÁ ĐƠN THANH TOÁN<br>
+      Bàn: ${tableNum} | ${now}<br>
+      NV: ${order.staffName||order.staffEmail||''}<br>
+      ${order.mergedWith&&order.mergedWith.length?'(Gộp bàn: '+order.mergedWith.map(id=>'Bàn '+id.replace('t','')).join(', ')+')':''}
+      <hr style="border:1px dashed #000;margin:6px 0">
+    </div>
+    ${order.items.map(it => `
+      <div style="display:flex;justify-content:space-between;margin:3px 0">
+        <span>${it.name}${it.size?' ('+it.size+')':''}${it.toppings&&it.toppings.length?' +'+it.toppings.join(','):''} x${it.qty||1}</span>
+        <span>${(it.price*(it.qty||1)).toLocaleString('vi-VN')}</span>
+      </div>
+    `).join('')}
+    <hr style="border:1px dashed #000;margin:6px 0">
+    <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px">
+      <span>TỔNG CỘNG</span><span>${total.toLocaleString('vi-VN')} đ</span>
+    </div>
+    <hr style="border:1px dashed #000;margin:6px 0">
+    <div style="text-align:center;margin-top:8px">${shop.footer||'Cảm ơn quý khách!'}<br>Hẹn gặp lại! 🙏</div>
+  `;
+  window.print();
+}
+</script>
+
+<!-- Firebase rules hint -->
+<!--
+FIREBASE SECURITY RULES:
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Admin only: config, groups, items
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@myapp.com';
+    }
+    match /groups/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@myapp.com';
+    }
+    match /items/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'admin@myapp.com';
+    }
+    // Staff (any logged in): orders
+    match /orders/{doc} {
+      allow read, write: if request.auth != null;
+    }
+    // History: any logged in can write, admin can read all
+    match /history/{doc} {
+      allow write: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.email == 'admin@myapp.com';
+    }
+    // Block everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+-->
+
+</body>
+</html>
