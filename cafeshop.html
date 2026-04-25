@@ -1395,30 +1395,58 @@ function calcTotal(ord) {
 }
 
 // ═══════════ MENU MODAL (POS) ═══════════
+// ═══════════ MENU MODAL - giỏ tạm, xác nhận mới save ═══════════
+let cartDraft = []; // Giỏ tạm trong modal, chưa commit Firebase
+
 function openMenuModal() {
   if (!currentTableId) return;
   selectedToppings = [];
+  cartDraft = []; // reset giỏ mỗi lần mở
   const toppingGroup = groups.find(g=>g.name&&g.name.toLowerCase()==='topping');
   const nonToppingGroups = groups.filter(g=>!g.name||g.name.toLowerCase()!=='topping');
   const toppings = toppingGroup ? items.filter(i=>i.groupId===toppingGroup.id) : [];
   if (!nonToppingGroups.length) return toast('Chưa có món nào. Vào Quản lý món thêm trước.','err');
 
   openModal(`
-    <div class="modal modal-lg" onclick="event.stopPropagation()">
-      <div class="modal-title"><h3>Chọn món – Bàn ${currentTableId.replace('t','')}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <div class="tabs" id="menu-modal-tabs">
+    <div class="modal modal-lg" onclick="event.stopPropagation()" style="display:flex;flex-direction:column;max-height:90vh">
+      <div class="modal-title" style="flex-shrink:0"><h3>Chọn món – Bàn ${currentTableId.replace('t','')}</h3><button class="modal-close" onclick="cancelMenuModal()">✕</button></div>
+      <div class="tabs" id="menu-modal-tabs" style="flex-shrink:0">
         ${nonToppingGroups.map((g,i)=>`<div class="tab ${i===0?'active':''}" onclick="switchMenuGroup('${g.id}',this)">${g.name}</div>`).join('')}
       </div>
-      <div id="menu-modal-items"></div>
-      ${toppings.length?`
-        <div style="margin-top:14px">
-          <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🫧 Topping (chọn kèm món)</div>
-          <div class="topping-wrap" id="topping-wrap">
-            ${toppings.map(t=>`<div class="tchip" onclick="toggleTopping('${t.id}','${t.name}',${t.price},this)">${t.name} <span style="color:var(--accent)">${fmtMoney(t.price)}</span></div>`).join('')}
-          </div>
-        </div>`:''}
+      <div style="flex:1;overflow-y:auto;margin-bottom:10px">
+        <div id="menu-modal-items"></div>
+        ${toppings.length?`
+          <div style="margin-top:14px">
+            <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🫧 Topping (chọn kèm món kế tiếp)</div>
+            <div class="topping-wrap" id="topping-wrap">
+              ${toppings.map(t=>`<div class="tchip" onclick="toggleTopping('${t.id}','${t.name}',${t.price},this)">${t.name} <span style="color:var(--accent)">${fmtMoney(t.price)}</span></div>`).join('')}
+            </div>
+          </div>`:''}
+      </div>
+      <!-- CART DRAFT -->
+      <div style="flex-shrink:0;border-top:2px solid var(--accent);padding-top:12px;background:var(--surface)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;color:var(--cream)">🛒 Đã chọn (<span id="cart-count">0</span>)</div>
+          <div style="font-size:14px;font-weight:700;color:var(--accent2)" id="cart-total">0 ₫</div>
+        </div>
+        <div id="cart-draft-list" style="max-height:140px;overflow-y:auto;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" style="flex:1" onclick="cancelMenuModal()">Hủy</button>
+          <button class="btn btn-gold btn-sm" style="flex:2" onclick="confirmCartDraft()">✅ Xác nhận thêm</button>
+        </div>
+      </div>
     </div>`);
   switchMenuGroup(nonToppingGroups[0].id, null);
+  renderCartDraft();
+}
+
+function cancelMenuModal() {
+  if (cartDraft.length > 0) {
+    if (!confirm(`Bạn có ${cartDraft.length} món chưa xác nhận. Huỷ và bỏ hết?`)) return;
+  }
+  cartDraft = [];
+  selectedToppings = [];
+  closeModal();
 }
 
 function switchMenuGroup(gid, tabEl) {
@@ -1431,7 +1459,6 @@ function switchMenuGroup(gid, tabEl) {
   if (!area) return;
   if (!gItems.length) { area.innerHTML='<div class="empty">Nhóm chưa có món</div>'; return; }
 
-  // Group by name
   const byName = {};
   gItems.forEach(it=>{ if (!byName[it.name]) byName[it.name]=[]; byName[it.name].push(it); });
 
@@ -1460,21 +1487,47 @@ function openSizePickerByName(groupId, idHash, encodedName) {
   if (!sizes.length) return;
   openModal(`
     <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-title"><h3>Chọn size: ${escapeHTML(name)}</h3><button class="modal-close" onclick="closeModal();openMenuModal()">← Quay lại</button></div>
+      <div class="modal-title"><h3>Chọn size: ${escapeHTML(name)}</h3><button class="modal-close" onclick="backToMenuModal()">← Quay lại</button></div>
       <div class="size-grid">
-        ${sizes.map(s=>`<div class="size-opt" onclick="closeModal();handleMenuItemClick('${s.id}')">
+        ${sizes.map(s=>`<div class="size-opt" onclick="handleSizePick('${s.id}')">
           <div class="s-name">${s.size||'Mặc định'}</div>
           <div class="s-price">${fmtMoney(s.price)}</div>
         </div>`).join('')}
       </div>
-      <div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)">
-        💡 Topping đã chọn (nếu có) sẽ được áp dụng vào size bạn chọn.
-      </div>
     </div>`);
 }
 
+function backToMenuModal() {
+  // Mở lại modal menu với giỏ tạm còn nguyên
+  const savedCart = [...cartDraft];
+  const savedToppings = [...selectedToppings];
+  closeModal();
+  openMenuModalPreserve(savedCart, savedToppings);
+}
+
+function openMenuModalPreserve(savedCart, savedToppings) {
+  openMenuModal();
+  cartDraft = savedCart;
+  selectedToppings = savedToppings;
+  // Restore topping UI
+  setTimeout(() => {
+    selectedToppings.forEach(t => {
+      document.querySelectorAll('.tchip').forEach(el => {
+        if (el.textContent.startsWith(t.name)) el.classList.add('sel');
+      });
+    });
+    renderCartDraft();
+  }, 50);
+}
+
+function handleSizePick(itemId) {
+  handleMenuItemClick(itemId);
+  // Quay lại modal menu
+  backToMenuModal();
+}
+
 function handleMenuItemClick(itemId) {
-  addToOrder(itemId);
+  addToCartDraft(itemId);
 }
 
 function toggleTopping(id, name, price, el) {
@@ -1483,41 +1536,121 @@ function toggleTopping(id, name, price, el) {
   else selectedToppings = selectedToppings.filter(t=>t.id!==id);
 }
 
-async function addToOrder(itemId) {
+// Thêm vào giỏ tạm (KHÔNG ghi Firebase)
+function addToCartDraft(itemId) {
   const item = items.find(i=>i.id===itemId);
   if (!item) return;
-  const tableId = currentTableId;
   const toppingCost = selectedToppings.reduce((s,t)=>s+t.price, 0);
   const toppingNames = selectedToppings.map(t=>t.name);
-  const ord = orders[tableId] || { tableId, items:[], staffEmail:currentUser.email, staffName:displayName(currentUser.email), mergeLog:[] };
-  ord.items = ord.items||[];
 
-  // Tìm item giống hệt (cùng name + size + toppings) để cộng qty
   const newKey = [item.name, item.size||'', [...toppingNames].sort().join('|')].join('__');
-  const existing = ord.items.find(it => {
+  const existing = cartDraft.find(it => {
     const k = [it.name, it.size||'', (it.toppings||[]).slice().sort().join('|')].join('__');
     return k === newKey;
   });
 
   if (existing) {
-    // Cộng dồn thay vì push mới
     existing.qty = (existing.qty||1) + 1;
   } else {
-    ord.items.push({
+    cartDraft.push({
       itemId, name:item.name, size:item.size||'',
       price: item.price + toppingCost, basePrice: item.price,
       toppings: toppingNames, qty: 1,
-      orderBy: currentUser.email,
-      orderByName: displayName(currentUser.email),
-      addedAt: new Date().toISOString()
     });
   }
 
-  await saveOrder(tableId, ord);
-  await logHistory(tableId, `Thêm món: ${item.name}${item.size?' ('+item.size+')':''}${toppingNames.length?' + '+toppingNames.join(','):''}`);
-  toast(`✅ Thêm: ${item.name}${item.size?' ('+item.size+')':''}`, 'ok');
+  // Reset topping sau khi thêm món
   selectedToppings = [];
   document.querySelectorAll('.tchip.sel').forEach(el=>el.classList.remove('sel'));
+  renderCartDraft();
+  // Flash cart
+  const card = document.getElementById('cart-count');
+  if (card) { card.style.transform='scale(1.3)'; setTimeout(()=>card.style.transform='',200); }
+}
+
+function renderCartDraft() {
+  const list = document.getElementById('cart-draft-list');
+  const countEl = document.getElementById('cart-count');
+  const totalEl = document.getElementById('cart-total');
+  if (!list) return;
+  if (!cartDraft.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:12px;font-size:12px">Chọn món để thêm vào giỏ...</div>';
+    if (countEl) countEl.textContent = '0';
+    if (totalEl) totalEl.textContent = '0 ₫';
+    return;
+  }
+  list.innerHTML = cartDraft.map((it,idx)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--surface2);border-radius:7px;margin-bottom:4px;font-size:12px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600">${escapeHTML(it.name)}${it.size?' ('+escapeHTML(it.size)+')':''}</div>
+        ${it.toppings&&it.toppings.length?`<div style="font-size:10px;color:var(--text3)">+ ${it.toppings.join(', ')}</div>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button class="qty-btn" style="width:22px;height:22px;font-size:13px" onclick="draftChangeQty(${idx},-1)">−</button>
+        <span style="min-width:18px;text-align:center;font-weight:700">${it.qty}</span>
+        <button class="qty-btn" style="width:22px;height:22px;font-size:13px" onclick="draftChangeQty(${idx},1)">+</button>
+      </div>
+      <div style="color:var(--accent);font-weight:600;min-width:65px;text-align:right">${fmtMoney(it.price*it.qty)}</div>
+      <button class="btn btn-red btn-xs" style="padding:2px 6px" onclick="draftRemove(${idx})">✕</button>
+    </div>
+  `).join('');
+  const total = cartDraft.reduce((s,it)=>s+it.price*it.qty, 0);
+  const count = cartDraft.reduce((s,it)=>s+it.qty, 0);
+  if (countEl) countEl.textContent = count;
+  if (totalEl) totalEl.textContent = fmtMoney(total);
+}
+
+function draftChangeQty(idx, delta) {
+  if (!cartDraft[idx]) return;
+  cartDraft[idx].qty = Math.max(1, cartDraft[idx].qty + delta);
+  renderCartDraft();
+}
+
+function draftRemove(idx) {
+  cartDraft.splice(idx, 1);
+  renderCartDraft();
+}
+
+// XÁC NHẬN - giờ mới ghi Firebase
+async function confirmCartDraft() {
+  if (!cartDraft.length) return toast('Chưa chọn món nào','err');
+  const tableId = currentTableId;
+  const ord = orders[tableId] || { tableId, items:[], staffEmail:currentUser.email, staffName:displayName(currentUser.email), mergeLog:[] };
+  ord.items = ord.items || [];
+
+  // Merge cartDraft vào ord.items
+  for (const cartItem of cartDraft) {
+    const cartKey = [cartItem.name, cartItem.size||'', (cartItem.toppings||[]).slice().sort().join('|')].join('__');
+    const existing = ord.items.find(it => {
+      const k = [it.name, it.size||'', (it.toppings||[]).slice().sort().join('|')].join('__');
+      return k === cartKey;
+    });
+    if (existing) {
+      existing.qty = (existing.qty||1) + cartItem.qty;
+    } else {
+      ord.items.push({
+        ...cartItem,
+        orderBy: currentUser.email,
+        orderByName: displayName(currentUser.email),
+        addedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  await saveOrder(tableId, ord);
+  // Log từng món
+  for (const it of cartDraft) {
+    await logHistory(tableId, `Thêm: ${it.name}${it.size?' ('+it.size+')':''}${it.toppings&&it.toppings.length?' + '+it.toppings.join(','):''} × ${it.qty}`);
+  }
+  toast(`✅ Đã thêm ${cartDraft.reduce((s,it)=>s+it.qty,0)} món vào Bàn ${tableId.replace('t','')}`, 'ok');
+  cartDraft = [];
+  selectedToppings = [];
+  closeModal();
+}
+
+// Giữ hàm addToOrder cũ cho tương thích (không dùng nữa)
+async function addToOrder(itemId) {
+  addToCartDraft(itemId);
 }
 
 // ═══════════ MERGE ═══════════
@@ -1656,19 +1789,25 @@ async function doCheckout() {
   const tableId = currentTableId;
   const ord = orders[tableId]; if (!ord) return;
   const total = calcTotal(ord);
+  const tableNum = tableId.replace('t','');
+
+  // CONFIRM Yes/No trước khi thanh toán
+  if (!confirm(`Xác nhận thanh toán Bàn ${tableNum}?\n\nTổng tiền: ${fmtMoney(total)}\n\nBàn sẽ được giải phóng sau khi thanh toán.`)) {
+    return;
+  }
+
   const { collection, addDoc, doc, deleteDoc, serverTimestamp } = window._firebase;
-  // Save to history collection (NEVER deleted)
   await addDoc(collection(window._db,'history'), {
-    tableId, tableNum: tableId.replace('t',''),
+    tableId, tableNum,
     items: ord.items||[], total,
     staffEmail: ord.staffEmail, mergeLog: ord.mergeLog||[],
     closedAt: serverTimestamp(), closedBy: currentUser.email,
     type: 'checkout'
   });
-  await logHistory(tableId, `Thanh toán ${fmtMoney(total)} bởi ${displayName(currentUser.email)}`);
+  await logHistory(tableId, `Thanh toán ${fmtMoney(total)}`);
   await deleteDoc(doc(window._db,'orders',tableId));
   closeModal(); closeOP();
-  toast(`✅ Thanh toán xong! Bàn ${tableId.replace('t','')} đã trống.`, 'ok');
+  toast(`✅ Thanh toán xong! Bàn ${tableNum} đã trống.`, 'ok');
 }
 
 // ═══════════ PRINT (chuẩn cho cả mobile và desktop) ═══════════
@@ -1709,8 +1848,10 @@ function doPrint() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hoá đơn Bàn ${tableId.replace('t','')}</title>
 <style>
-@page { size: 80mm auto; margin: 0; }
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* Kích thước chuẩn cho máy in nhiệt 80mm, fallback 58mm cũng ok */
+@page { size: 80mm auto; margin: 0 !important; padding: 0 !important; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body {
   background: #ccc;
   font-family: 'Courier New', 'Consolas', monospace;
@@ -1721,7 +1862,7 @@ body {
   color: #000;
   width: 80mm;
   margin: 10px auto;
-  padding: 3mm;
+  padding: 3mm 2mm;
   font-size: 12px;
   line-height: 1.35;
   box-shadow: 0 4px 16px rgba(0,0,0,.25);
@@ -1751,10 +1892,23 @@ hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
 .pb-close { background: #888; color: #fff; }
 
 @media print {
+  html, body {
+    width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
   body { background: #fff !important; }
   .print-bar { display: none !important; }
-  .receipt { box-shadow: none !important; margin: 0 !important; width: 80mm !important; }
-  html, body { width: 80mm !important; margin: 0 !important; padding: 0 !important; }
+  .receipt {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 2mm 2mm !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    page-break-inside: avoid;
+  }
+  @page { size: 80mm auto; margin: 0 !important; }
 }
 </style>
 </head>
