@@ -263,12 +263,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .size-opt .s-name{font-size:13px;font-weight:600}
 .size-opt .s-price{font-size:12px;color:var(--accent);margin-top:3px}
 
-/* RECEIPT PRINT */
-#receipt-iframe{display:none}
-@media print{
-  body>*{display:none!important}
-  #receipt-iframe{display:block!important;width:100%;height:100%;border:none}
-}
+/* RECEIPT PRINT - sẽ in từ popup riêng */
 
 /* HISTORY */
 .hist-item{background:var(--surface2);border-radius:9px;margin-bottom:10px;overflow:hidden}
@@ -529,7 +524,15 @@ async function doLogin() {
   } catch(e) { toast('Sai tài khoản hoặc mật khẩu', 'err'); }
 }
 async function doLogout() {
-  const { signOut } = window._firebase; await signOut(window._auth);
+  const { signOut } = window._firebase;
+  await signOut(window._auth);
+  // Xoá mật khẩu trong ô input để bảo mật
+  const lp = document.getElementById('lp');
+  const lu = document.getElementById('lu');
+  if (lp) lp.value = '';
+  if (lu) lu.value = '';
+  const suf = document.getElementById('lu-suffix');
+  if (suf) suf.textContent = '';
 }
 function hideAll() {
   ['login-screen','guest-screen','app'].forEach(id => {
@@ -539,6 +542,9 @@ function hideAll() {
 }
 function showLogin() {
   hideAll();
+  // Đảm bảo ô password rỗng khi vào lại màn hình login
+  const lp = document.getElementById('lp');
+  if (lp) lp.value = '';
   document.getElementById('login-screen').style.display = 'flex';
 }
 function showGuest() {
@@ -588,20 +594,27 @@ function renderGuestTables() {
 
 async function handleGuestTableClick(tableId, tableNum) {
   if (guestMode === 'order') {
-    // Notify staff: new guest at table
-    const { collection, addDoc, serverTimestamp } = window._firebase;
-    await addDoc(collection(window._db, 'notifications'), {
-      type: 'new_guest', tableId, tableNum, at: serverTimestamp(), read: false
-    });
-    toast(`✅ Đã thông báo nhân viên! Bàn ${tableNum} sẽ phục vụ bạn.`, 'ok');
-    showNotif(`Có khách mới tại Bàn ${tableNum}`, 'new_guest');
+    // Gửi notification cho nhân viên đang đăng nhập
+    try {
+      const { collection, addDoc, serverTimestamp } = window._firebase;
+      await addDoc(collection(window._db, 'notifications'), {
+        type: 'new_guest', tableId, tableNum, at: serverTimestamp(), read: false
+      });
+      // Khách chỉ thấy thông báo "đã gọi nhân viên" đơn giản
+      toast(`✅ Đã gọi nhân viên! Xin vui lòng chờ trong giây lát.`, 'ok');
+    } catch(e) {
+      toast('Không thể gọi. Vui lòng gọi trực tiếp nhân viên.', 'err');
+    }
   } else {
-    const { collection, addDoc, serverTimestamp } = window._firebase;
-    await addDoc(collection(window._db, 'notifications'), {
-      type: 'checkout_request', tableId, tableNum, at: serverTimestamp(), read: false
-    });
-    toast(`✅ Đã yêu cầu tính tiền! Nhân viên sẽ đến ngay.`, 'ok');
-    showNotif(`Khách tại Bàn ${tableNum} yêu cầu tính tiền`, 'checkout');
+    try {
+      const { collection, addDoc, serverTimestamp } = window._firebase;
+      await addDoc(collection(window._db, 'notifications'), {
+        type: 'checkout_request', tableId, tableNum, at: serverTimestamp(), read: false
+      });
+      toast(`✅ Đã yêu cầu tính tiền! Nhân viên sẽ đến ngay.`, 'ok');
+    } catch(e) {
+      toast('Không thể yêu cầu. Vui lòng gọi trực tiếp nhân viên.', 'err');
+    }
   }
 }
 
@@ -743,6 +756,9 @@ function toast(msg, type='info') {
   setTimeout(()=>el.remove(), 3500);
 }
 function showNotif(msg, type) {
+  // Chỉ hiển thị notif cho nhân viên/admin ĐÃ đăng nhập
+  // Khách guest không thấy notif này
+  if (isGuest || !currentUser) return;
   const el = document.createElement('div');
   el.className = 'notif';
   el.innerHTML = `<div class="notif-title">${type==='new_guest'?'🛎️ KHÁCH MỚI':'💳 TÍNH TIỀN'}</div>${msg}`;
@@ -1326,6 +1342,9 @@ async function changeQty(tableId, idx, delta) {
   const merged = mergeOrderItems(ord.items);
   const target = merged[idx];
   if (!target) return;
+  const oldQty = target.qty;
+  const newQty = Math.max(1, oldQty + delta);
+  if (newQty === oldQty) return; // Không thay đổi
   // Find and update in original array
   let found = 0;
   ord.items = ord.items.map(it => {
@@ -1333,13 +1352,12 @@ async function changeQty(tableId, idx, delta) {
     const tkey = [target.name, target.size||'', (target.toppings||[]).sort().join('|')].join('__');
     if (key===tkey && found < (target.qty||1)) {
       found++;
-      const newQty = Math.max(1, (it.qty||1)+delta);
       return {...it, qty: newQty};
     }
     return it;
   });
   await saveOrder(tableId, ord);
-  await logHistory(tableId, `Cập nhật số lượng: ${target.name} × ${merged[idx].qty+delta}`);
+  await logHistory(tableId, `Đổi SL: ${target.name}${target.size?' ('+target.size+')':''} ${oldQty} → ${newQty}`);
 }
 
 async function removeItem(tableId, idx) {
@@ -1347,13 +1365,16 @@ async function removeItem(tableId, idx) {
   const merged = mergeOrderItems(ord.items);
   const target = merged[idx];
   if (!target) return;
+  if (!confirm(`Xoá món "${target.name}${target.size?' ('+target.size+')':''}" × ${target.qty}?`)) return;
   const tkey = [target.name, target.size||'', (target.toppings||[]).sort().join('|')].join('__');
-  await logHistory(tableId, `Xoá món: ${target.name} ${target.size||''}`);
+  // LOG TRƯỚC khi xoá để đảm bảo lưu được
+  await logHistory(tableId, `Xoá món: ${target.name}${target.size?' ('+target.size+')':''} × ${target.qty}`);
   ord.items = ord.items.filter(it => {
     const key = [it.name, it.size||'', (it.toppings||[]).sort().join('|')].join('__');
     return key !== tkey;
   });
   await saveOrder(tableId, ord);
+  toast(`Đã xoá: ${target.name}`, 'ok');
 }
 
 async function saveOrder(tableId, ordData) {
@@ -1637,48 +1658,70 @@ function doPrint() {
   const shop = shopConfig;
   const now = new Date().toLocaleString('vi-VN');
 
-  const receiptHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  // Build receipt content - 80mm thermal printer
+  const receiptHTML = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
 <title>Hoá đơn Bàn ${tableId.replace('t','')}</title>
 <style>
 @page { size: 80mm auto; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 80mm; }
-body { font-family: 'Courier New', 'Consolas', monospace; font-size: 12px; padding: 4mm; color: #000; background: #fff; }
+html, body {
+  width: 80mm;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #000;
+  font-family: 'Courier New', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.35;
+}
+body { padding: 3mm; }
 .c { text-align: center; }
 .b { font-weight: bold; }
-.big { font-size: 15px; }
-.lg { font-size: 17px; }
+.big { font-size: 14px; }
+.lg { font-size: 16px; }
 hr { border: none; border-top: 1px dashed #000; margin: 4px 0; }
-.row { display: flex; justify-content: space-between; margin: 2px 0; gap: 6px; }
+.row { display: flex; justify-content: space-between; gap: 6px; margin: 2px 0; }
 .row .l { flex: 1; word-break: break-word; }
 .row .r { white-space: nowrap; }
 .foot { text-align: center; margin-top: 6px; font-style: italic; }
-</style></head><body>
-<div class="c b lg">${escapeHTML(shop.name||'CaféShop')}</div>
-${shop.address?`<div class="c">${escapeHTML(shop.address)}</div>`:''}
-${shop.phone?`<div class="c">ĐT: ${escapeHTML(shop.phone)}</div>`:''}
+.note { font-size: 10px; }
+@media print {
+  html, body { width: 80mm !important; margin: 0 !important; }
+  body { padding: 3mm !important; }
+}
+</style>
+</head>
+<body>
+<div class="c b lg">${escapeHTML(shop.name||'CafeShop')}</div>
+${shop.address?`<div class="c note">${escapeHTML(shop.address)}</div>`:''}
+${shop.phone?`<div class="c note">DT: ${escapeHTML(shop.phone)}</div>`:''}
 <hr>
-<div class="c b big">HOÁ ĐƠN THANH TOÁN</div>
-<div class="c">Bàn: ${tableId.replace('t','')} &nbsp;|&nbsp; ${now}</div>
+<div class="c b big">HOA DON THANH TOAN</div>
+<div class="c">Ban: ${tableId.replace('t','')} | ${now}</div>
 <div class="c">NV: ${escapeHTML(displayName(ord.staffEmail||''))}</div>
-${ord.mergeLog&&ord.mergeLog.length?`<div class="c" style="font-size:10px">(Đã gộp: ${[...new Set(ord.mergeLog.map(l=>l.fromTableNum).filter(Boolean))].map(n=>'Bàn '+n).join(', ')})</div>`:''}
+${ord.mergeLog&&ord.mergeLog.length?`<div class="c note">(Da gop: ${[...new Set(ord.mergeLog.map(l=>l.fromTableNum).filter(Boolean))].map(n=>'Ban '+n).join(', ')})</div>`:''}
 <hr>
 ${merged.map(it=>`<div class="row">
   <span class="l">${escapeHTML(it.name)}${it.size?' ('+escapeHTML(it.size)+')':''}${it.toppings&&it.toppings.length?' +'+escapeHTML(it.toppings.join(',')):''} x${it.qty}</span>
   <span class="r">${(it.price*it.qty).toLocaleString('vi-VN')}</span>
 </div>`).join('')}
 <hr>
-<div class="row b big"><span class="l">TỔNG CỘNG</span><span class="r">${total.toLocaleString('vi-VN')} đ</span></div>
+<div class="row b big"><span class="l">TONG CONG</span><span class="r">${total.toLocaleString('vi-VN')} d</span></div>
 <hr>
-<div class="foot">${escapeHTML(shop.footer||'Cảm ơn quý khách!')}<br>Hẹn gặp lại! 🙏</div>
+<div class="foot">${escapeHTML(shop.footer||'Cam on quy khach!')}<br>Hen gap lai!</div>
 </body></html>`;
 
-  // Tạo iframe ẩn để in (không bị chặn popup)
-  let frame = document.getElementById('print-frame');
-  if (frame) frame.remove();
-  frame = document.createElement('iframe');
+  // Tạo iframe ẩn để in - không bị chặn popup, chắc chắn hoạt động
+  // Xoá iframe cũ nếu có
+  const oldFrame = document.getElementById('print-frame');
+  if (oldFrame) oldFrame.remove();
+
+  const frame = document.createElement('iframe');
   frame.id = 'print-frame';
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  frame.style.cssText = 'position:fixed;right:-9999px;bottom:-9999px;width:80mm;height:600px;border:0';
   document.body.appendChild(frame);
 
   const fdoc = frame.contentDocument || frame.contentWindow.document;
@@ -1686,26 +1729,29 @@ ${merged.map(it=>`<div class="row">
   fdoc.write(receiptHTML);
   fdoc.close();
 
-  frame.onload = () => {
+  // Đợi iframe load xong rồi in
+  const triggerPrint = () => {
     try {
       frame.contentWindow.focus();
       frame.contentWindow.print();
-      // Don't auto-remove - browser may need it
-      setTimeout(() => { try { frame.remove(); } catch(e){} }, 1500);
+      toast('🖨️ Đang gửi đến máy in...', 'info');
     } catch(e) {
-      toast('Không in được. Mở popup để in...', 'info');
-      const w = window.open('', '_blank', 'width=320,height=600');
-      if (w) { w.document.write(receiptHTML); w.document.close(); setTimeout(()=>w.print(), 300); }
+      console.error('Print error:', e);
+      toast('❌ Lỗi in: ' + e.message, 'err');
     }
+    // Cleanup sau khi in
+    setTimeout(() => { try { frame.remove(); } catch(e){} }, 2000);
   };
-  // Fallback for browsers that don't fire onload
-  setTimeout(() => {
-    if (frame.contentWindow) {
-      try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch(e){}
-    }
-  }, 400);
 
-  toast('🖨️ Đang in hoá đơn...', 'info');
+  if (frame.contentWindow.document.readyState === 'complete') {
+    setTimeout(triggerPrint, 100);
+  } else {
+    frame.onload = () => setTimeout(triggerPrint, 100);
+    // Fallback nếu onload không fire
+    setTimeout(() => {
+      if (frame && frame.contentWindow) triggerPrint();
+    }, 500);
+  }
 }
 
 function escapeHTML(s) {
@@ -1722,7 +1768,10 @@ async function logHistory(tableId, action) {
       byName: displayName(currentUser?.email||'system'),
       at: serverTimestamp()
     });
-  } catch(e){}
+  } catch(e){
+    console.error('logHistory error:', e);
+    // Không toast để không làm phiền user, nhưng log ra console để debug
+  }
 }
 
 // ═══════════ HISTORY PAGE ═══════════
